@@ -1,6 +1,7 @@
 // Extracted application logic from index.html. Depends on js/data.js.
 (function(){
-var SPECIAL_BOOTHS=[{"id":"special-01","label":"特設01","display":"特設01","row":"","num":"01","special":"01","x":695,"y":441,"w":82,"h":68,"pinX":736,"pinY":475,"type":"special"},{"id":"special-02","label":"特設02","display":"特設02","row":"","num":"02","special":"02","x":787,"y":441,"w":95,"h":34,"pinX":834.5,"pinY":458,"type":"special"},{"id":"special-03","label":"特設03","display":"特設03","row":"","num":"03","special":"03","x":787,"y":475,"w":95,"h":34,"pinX":834.5,"pinY":492,"type":"special"},{"id":"special-04","label":"特設04","display":"特設04","row":"","num":"04","special":"04","x":33,"y":458,"w":60,"h":84,"pinX":63,"pinY":500,"type":"special"},{"id":"special-05","label":"特設05","display":"特設05","row":"","num":"05","special":"05","x":399.68,"y":560,"w":24.32,"h":42,"pinX":411.84,"pinY":581,"type":"special"},{"id":"special-06","label":"特設06","display":"特設06","row":"","num":"06","special":"06","x":680,"y":685,"w":70,"h":65,"pinX":715,"pinY":717.5,"type":"special"},{"id":"special-07","label":"特設07","display":"特設07","row":"","num":"07","special":"07","x":625,"y":441,"w":42,"h":68,"pinX":646,"pinY":475,"type":"special"},{"id":"special-08","label":"特設08","display":"特設08","row":"","num":"08","special":"08","x":30,"y":779,"w":117,"h":72,"pinX":88.5,"pinY":815,"type":"special"},{"id":"special-09","label":"特設09","display":"特設09","row":"","num":"09","special":"09","x":360,"y":383,"w":63,"h":95,"pinX":391.5,"pinY":430.5,"type":"special"},{"id":"special-10","label":"特設10","display":"特設10","row":"","num":"10","special":"10","x":31,"y":242,"w":118,"h":63,"pinX":90,"pinY":273.5,"type":"special"},{"id":"special-11","label":"特設11","display":"特設11","row":"","num":"11","special":"11","x":149,"y":242,"w":118,"h":63,"pinX":208,"pinY":273.5,"type":"special"},{"id":"special-12","label":"特設12","display":"特設12","row":"","num":"12","special":"12","x":267,"y":242,"w":118,"h":63,"pinX":326,"pinY":273.5,"type":"special"}];
+// Special/facility booths now come from data.js (SPECIAL_BOOTHS_DATA).
+var SPECIAL_BOOTHS=(typeof SPECIAL_BOOTHS_DATA!=='undefined'&&SPECIAL_BOOTHS_DATA)||[];
 booths=booths.concat(SPECIAL_BOOTHS);
 var colors={"bg":"#f8fafc","wall":"#9da3a6","hall":"#ffffff","facility":"#f4f0e8","booth":"#efc247","trpg":"#d17142","purple":"#9a7aaa","green":"#b8c889","blue":"#c8d8ef","red":"#d80b21","border":"#111827","title":"#8e9499","pink":"#d0008b","cyan":"#079bd3","detail":"#374151"};
 var svg=document.getElementById('mapSvg'), viewport=document.getElementById('viewport'), pOverlayLayer=document.getElementById('pOverlayLayer'), markerLayer=document.getElementById('markerLayer'), toiletLayer=document.getElementById('toiletLayer');
@@ -97,7 +98,22 @@ function drawMarkers(){
   markerLayer.innerHTML=s;
 }
 function clientToMap(x,y){return {x:(x-view.x)/view.zoom,y:(y-view.y)/view.zoom};}
-function pick(x,y){for(var i=booths.length-1;i>=0;i--){var b=booths[i]; if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)return b;} return null;}
+function pick(x,y){
+  /* 1) exact hit, last booth wins (row cells sit above facility/zone boxes) */
+  for(var i=booths.length-1;i>=0;i--){var b=booths[i]; if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)return b;}
+  /* 2) near miss: the smallest cells are only a few screen px tall, so fall back
+     to the closest booth within ~14 screen px of the tap. */
+  var tol=14/(view.zoom||1), best=null, bd=tol*tol;
+  for(var j=0;j<booths.length;j++){
+    var c=booths[j];
+    if(c.type==='facility')continue;
+    var dx=x<c.x?c.x-x:(x>c.x+c.w?x-(c.x+c.w):0);
+    var dy=y<c.y?c.y-y:(y>c.y+c.h?y-(c.y+c.h):0);
+    var d=dx*dx+dy*dy;
+    if(d<bd){bd=d;best=c;}
+  }
+  return best;
+}
 function boothUrlValue(b){
   if(!b)return '';
   return String(cleanDisplay(b)||b.id||'').replace(/\s+/g,'').replace(/^\s+|\s+$/g,'');
@@ -155,6 +171,10 @@ function cleanInfoRowCode(row){
   r=r.replace(/列/g,'').replace(/[左右]/g,'').replace(/\s+/g,'');
   return r.toUpperCase();
 }
+/* Zero-pad to two digits WITHOUT truncating longer numbers.
+   ('0'+num).slice(-2) turned M149 into M49 and made M100-M148 collide with
+   M00-M48 — the autumn map has rows of 111 and 149 booths. */
+function pad2(n){n=String(n||'');return n.length<2?('0'+n):n;}
 function cleanInfoNumber(num){
   var n=String(num||'');
   n=n.replace(/[！-～]/g,function(ch){return String.fromCharCode(ch.charCodeAt(0)-0xFEE0);});
@@ -173,7 +193,7 @@ function infoKeyVariantsFromPlace(place){
   m=s.match(/^特設0*(\d+)$/);
   if(m){var sp=String(parseInt(m[1],10)); add('SPECIAL'+sp); add('特設'+sp); return keys;}
   m=s.match(/^([A-Za-z]|[にろいはほへと横])0*(\d+)$/);
-  if(m){var row=cleanInfoRowCode(m[1]); var num=cleanInfoNumber(m[2]); add(row+num); add(row+('0'+num).slice(-2)); return keys;}
+  if(m){var row=cleanInfoRowCode(m[1]); var num=cleanInfoNumber(m[2]); add(row+num); add(row+pad2(num)); return keys;}
   m=s.match(/^0*(\d+)$/);
   if(m){var an=String(parseInt(m[1],10)); add('AREA'+an); add('エリア'+an); return keys;}
   add(s);
@@ -224,14 +244,14 @@ function boothInfoKeys(b){
     var sp=String(parseInt(cleanInfoNumber(b.special),10));
     add('SPECIAL'+sp);
     add('特設'+sp);
-    add('特設'+('0'+sp).slice(-2));
+    add('特設'+pad2(sp));
     return keys;
   }
   if(b.row){
     var row=cleanInfoRowCode(b.row);
     var num=cleanInfoNumber(b.num);
     add(row+num);
-    add(row+('0'+num).slice(-2));
+    add(row+pad2(num));
     return keys;
   }
   var n=cleanInfoNumber(b.num);
@@ -494,7 +514,7 @@ function boothSearchParts(b){
   if(b&&b.special){
     var sp=String(parseInt(cleanInfoNumber(b.special),10));
     add('特設'+sp);
-    add('特設'+('0'+sp).slice(-2));
+    add('特設'+pad2(sp));
     add('SPECIAL'+sp);
     add('special'+sp);
     add(num);
