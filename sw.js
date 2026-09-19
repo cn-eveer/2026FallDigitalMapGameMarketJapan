@@ -1,4 +1,4 @@
-const CACHE_NAME = 'event-hall-booth-map-v87';
+const CACHE_NAME = 'event-hall-booth-map-v88';
 const APP_SHELL = ['./', './index.html', './event_hall_layout_detailed_booths_selectable_pins_v87_mobile_offline.html', './manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL).catch(() => cache.addAll(['./']))));
