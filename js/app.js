@@ -4,7 +4,7 @@
 var SPECIAL_BOOTHS=(typeof SPECIAL_BOOTHS_DATA!=='undefined'&&SPECIAL_BOOTHS_DATA)||[];
 booths=booths.concat(SPECIAL_BOOTHS);
 var colors={"bg":"#f8fafc","wall":"#9da3a6","hall":"#ffffff","facility":"#f4f0e8","booth":"#efc247","trpg":"#d17142","purple":"#9a7aaa","green":"#b8c889","blue":"#c8d8ef","red":"#d80b21","border":"#111827","title":"#8e9499","pink":"#d0008b","cyan":"#079bd3","detail":"#374151"};
-var svg=document.getElementById('mapSvg'), viewport=document.getElementById('viewport'), pOverlayLayer=document.getElementById('pOverlayLayer'), markerLayer=document.getElementById('markerLayer'), toiletLayer=document.getElementById('toiletLayer');
+var svg=document.getElementById('mapSvg'), viewport=document.getElementById('viewport'), pOverlayLayer=document.getElementById('pOverlayLayer'), markerLayer=document.getElementById('markerLayer'), toiletLayer=document.getElementById('toiletLayer'), filterLayer=document.getElementById('filterLayer');
 var searchInput=document.getElementById('searchInput'), searchBtn=document.getElementById('searchBtn'), clearSearchBtn=document.getElementById('clearSearchBtn'), searchModeSelect=document.getElementById('searchModeSelect'), suggestions=document.getElementById('suggestions'), resetBtn=document.getElementById('resetBtn');
 var userInput=document.getElementById('userInput'), panel=document.getElementById('panel'), infoPanel=document.getElementById('infoPanel'), favToggle=document.getElementById('favToggle'), favBody=document.getElementById('favBody'), favCount=document.getElementById('favCount'), panelTitle=document.getElementById('panelTitle'), panelSub=document.getElementById('panelSub'), panelInfo=document.getElementById('panelInfo'), panelLinks=document.getElementById('panelLinks'), infoTabs=document.getElementById('infoTabs'), memoTab=document.getElementById('memoTab'), overviewTab=document.getElementById('overviewTab'), gamesTab=document.getElementById('gamesTab'), overviewPanel=document.getElementById('overviewPanel'), gamesPanel=document.getElementById('gamesPanel'), watchTab=document.getElementById('watchTab'), watchPanel=document.getElementById('watchPanel'), memoInput=document.getElementById('memoInput'), memoSaved=document.getElementById('memoSaved'), daySwitch=document.getElementById('daySwitch'), starBtn=document.getElementById('starBtn'), visitedBtn=document.getElementById('visitedBtn'), againBtn=document.getElementById('againBtn'), favList=document.getElementById('favList'), againList=document.getElementById('againList'), closeBtn=document.getElementById('closeBtn');
 var selected=null, favorites=[], visited=[], again=[], memos={}, gameWatch={}, userName='guest', selectedDay='土', activeInfoTab='memo', searchMode='booth'; var view={zoom:.78,x:0,y:170}, drag=null, dragging=false, lastTouchDist=0, pinchStartZoom=0, pinchStartMap=null;
@@ -58,7 +58,7 @@ function isVisited(id){return visited.indexOf(id)>=0;}
 function isAgain(id){return again.indexOf(id)>=0;}
 function toggleIn(list,id){var i=list.indexOf(id); if(i>=0)list.splice(i,1); else list.push(id);}
 function resetView(){var w=window.innerWidth||document.documentElement.clientWidth||390;var h=window.innerHeight||document.documentElement.clientHeight||844;var z=isMobile()?0.58:0.78;view.zoom=z;view.x=(w-MAP_W*z)/2;view.y=isMobile()?210:150;applyView();}
-function applyView(){var tf='translate('+view.x+' '+view.y+') scale('+view.zoom+')'; viewport.setAttribute('transform',tf); if(pOverlayLayer)pOverlayLayer.setAttribute('transform',tf); if(toiletLayer)toiletLayer.setAttribute('transform',tf); markerLayer.setAttribute('transform',tf); if(view.zoom>=1.6) svg.classList.add('zoomed'); else svg.classList.remove('zoomed'); drawMarkers();}
+function applyView(){var tf='translate('+view.x+' '+view.y+') scale('+view.zoom+')'; viewport.setAttribute('transform',tf); if(pOverlayLayer)pOverlayLayer.setAttribute('transform',tf); if(toiletLayer)toiletLayer.setAttribute('transform',tf); if(filterLayer)filterLayer.setAttribute('transform',tf); markerLayer.setAttribute('transform',tf); if(view.zoom>=1.6) svg.classList.add('zoomed'); else svg.classList.remove('zoomed'); drawMarkers();}
 function sx(px){return px/view.zoom;}
 function escAttr(v){return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function markerGroup(b,body){return '<g transform="translate('+b.pinX+' '+b.pinY+') scale('+(1/view.zoom)+')" data-marker-for="'+escAttr(b.id)+'">'+body+'</g>';}
@@ -232,7 +232,7 @@ var BOOTH_DETAIL_INDEX={}, GAME_DETAIL_INDEX={};
     for(var gk=0;gk<gkeys.length;gk++){
       var gkey=gkeys[gk];
       if(!GAME_DETAIL_INDEX[gkey])GAME_DETAIL_INDEX[gkey]=[];
-      GAME_DETAIL_INDEX[gkey].push({place:gr[0],title:gr[1],description:gr[2],price:gr[3],players:gr[4],time:gr[5],age:gr[6],tags:gr[7],publisher:gr[8],url:gr[9]});
+      GAME_DETAIL_INDEX[gkey].push({place:gr[0],title:gr[1],description:gr[2],price:gr[3],players:gr[4],time:gr[5],age:gr[6],tags:gr[7],publisher:gr[8],url:gr[9],timeBucket:gr[10]||'',genre:gr[11]||'',genre2:gr[12]||'',playerTags:gr[13]||'',form:gr[14]||'',expansion:gr[15]||''});
     }
   }
 })();
@@ -730,6 +730,219 @@ window.addEventListener('popstate',function(){
   }
 });
 window.onresize=resetView; resetView(); updatePanel(); updateSearchModeUi(); openBoothFromUrl();
+
+/* ======================================================================
+   ゲーム一覧タブ
+   GAME_DETAIL_ROWS (build_genres.py が付けた time_bucket / genre 付き) を
+   一覧表示し、プレイ時間とジャンルで絞り込む。項目をタップすると地図タブに
+   切り替わり、そのゲームのブースを選択して中心に寄せる。
+   ====================================================================== */
+var TAX=(typeof GAME_TAXONOMY!=='undefined'&&GAME_TAXONOMY)||{families:[],time:[]};
+var appEl=document.getElementById('app'),
+    tabBar=document.getElementById('tabBar'),
+    glList=document.getElementById('glList'), glTime=document.getElementById('glTime'),
+    glGenres=document.getElementById('glGenres'), glGenreToggle=document.getElementById('glGenreToggle'),
+    glGenreCount=document.getElementById('glGenreCount'), glCount=document.getElementById('glCount'),
+    glSearchEl=document.getElementById('glSearch'), glClearEl=document.getElementById('glClear'),
+    glMore=document.getElementById('glMore'), glReset=document.getElementById('glReset');
+var GL_PAGE=60;
+var glFilter={time:{},genre:{},q:''}, glRows=[], glMatches=[], glShown=0;
+var PLACE_BOOTH=null, BOOTH_NAME_CACHE={};
+
+function placeBoothIndex(){
+  if(PLACE_BOOTH)return PLACE_BOOTH;
+  PLACE_BOOTH={};
+  for(var i=0;i<booths.length;i++){
+    var ks=boothInfoKeys(booths[i]);
+    for(var k=0;k<ks.length;k++)if(!PLACE_BOOTH[ks[k]])PLACE_BOOTH[ks[k]]=booths[i];
+  }
+  return PLACE_BOOTH;
+}
+function boothForPlace(place){
+  var idx=placeBoothIndex(), ks=infoKeyVariantsFromPlace(place);
+  for(var i=0;i<ks.length;i++)if(idx[ks[i]])return idx[ks[i]];
+  return null;
+}
+function circleNameForPlace(place){
+  if(BOOTH_NAME_CACHE[place]!==undefined)return BOOTH_NAME_CACHE[place];
+  var name='', b=boothForPlace(place);
+  if(b){var infos=boothInfosFor(b); if(infos.length&&infos[0].name)name=infos[0].name;}
+  BOOTH_NAME_CACHE[place]=name;
+  return name;
+}
+function buildGlRows(){
+  var rows=(typeof GAME_DETAIL_ROWS!=='undefined'&&GAME_DETAIL_ROWS)||[];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(!r[1])continue;
+    glRows.push({place:r[0],title:r[1],desc:r[2]||'',price:r[3]||'',players:r[4]||'',
+                 time:r[5]||'',url:r[9]||'',tb:r[10]||'',g1:r[11]||'',g2:r[12]||'',q:''});
+  }
+}
+function glHaystack(row){
+  if(!row.q){
+    row.q=normalizeSearchText([row.title,row.desc,displayInfoPlace(row.place),circleNameForPlace(row.place)].join(' '));
+  }
+  return row.q;
+}
+function timeLabel(tb){
+  for(var i=0;i<TAX.time.length;i++)if(TAX.time[i][0]===tb)return TAX.time[i][1];
+  return '';
+}
+function groupLists(state){
+  var inc=[],exc=[],k;
+  for(k in state){if(state[k]===1)inc.push(k);else if(state[k]===-1)exc.push(k);}
+  return {inc:inc,exc:exc};
+}
+/* Within a group, include chips are OR'd and exclude chips are a NOT: a row is
+   dropped when it carries any excluded value, even if it also matches an
+   included one. Groups are AND'd with each other. */
+function groupMatch(lists,vals){
+  var i;
+  for(i=0;i<lists.exc.length;i++)if(vals.indexOf(lists.exc[i])>=0)return false;
+  if(!lists.inc.length)return true;
+  for(i=0;i<lists.inc.length;i++)if(vals.indexOf(lists.inc[i])>=0)return true;
+  return false;
+}
+function glMatch(row,tl,gl){
+  if(!groupMatch(tl,[row.tb]))return false;
+  if(!groupMatch(gl,row.g2?[row.g1,row.g2]:[row.g1]))return false;
+  if(glFilter.q&&glHaystack(row).indexOf(glFilter.q)<0)return false;
+  return true;
+}
+function activeCount(state){var n=0,k;for(k in state)if(state[k])n++;return n;}
+/* Three states per chip: 未選択 → 含む(✓) → 除外(✕) → 未選択 */
+function chipHtml(group,value,label){
+  var st=glFilter[group][value]||0;
+  var cls='glChip'+(st===1?' on':(st===-1?' off':''));
+  var mark=st===1?'<span class="glChipTick">✓</span>':(st===-1?'<span class="glChipTick">✕</span>':'');
+  return '<button type="button" class="'+cls+'" aria-pressed="'+(st===1?'true':'false')+'"'+
+         ' title="'+(st===1?'含む':(st===-1?'除外':'未選択'))+'"'+
+         ' data-g="'+escAttr(group)+'" data-v="'+escAttr(value)+'">'+mark+escapeHtml(label)+'</button>';
+}
+function renderGlChips(){
+  var h='';
+  for(var i=0;i<TAX.time.length;i++)h+=chipHtml('time',TAX.time[i][0],TAX.time[i][1]);
+  if(glTime)glTime.innerHTML=h;
+  var g='';
+  for(var f=0;f<TAX.families.length;f++){
+    var fam=TAX.families[f];
+    g+='<div class="glFam"><div class="glFamLabel">'+escapeHtml(fam.name)+'</div><div class="glFamChips">';
+    for(var j=0;j<fam.genres.length;j++)g+=chipHtml('genre',fam.genres[j],fam.genres[j]);
+    g+='</div></div>';
+  }
+  if(glGenres)glGenres.innerHTML=g;
+  if(glGenreCount)glGenreCount.textContent=activeCount(glFilter.genre)?'('+activeCount(glFilter.genre)+')':'';
+  var active=activeCount(glFilter.time)+activeCount(glFilter.genre);
+  if(glReset)glReset.className=active?'show':'';
+}
+function glItemHtml(row,i){
+  var meta=displayInfoPlace(row.place);
+  var cn=circleNameForPlace(row.place);
+  if(cn)meta+=' / '+cn;
+  var sub=[];
+  if(row.players&&row.players!=='-')sub.push(row.players+'人');
+  if(row.time&&row.time!=='-')sub.push(row.time+'分');
+  if(row.price&&row.price!=='¥0')sub.push(row.price);
+  var tags='';
+  if(row.tb)tags+='<span class="glTag t-'+row.tb+'">'+escapeHtml(timeLabel(row.tb))+'</span>';
+  if(row.g1)tags+='<span class="glTag g">'+escapeHtml(row.g1)+'</span>';
+  if(row.g2)tags+='<span class="glTag g">'+escapeHtml(row.g2)+'</span>';
+  /* The card is a <div>, not a <button>: the game-page link has to be a real
+     <a>, and an anchor inside a button is invalid. Only the inner button
+     carries data-i, so tapping the link never triggers the map jump. */
+  return '<div class="glItem">'+
+    '<button type="button" class="glItemMain" data-i="'+i+'">'+
+      '<div class="glTitle">'+escapeHtml(row.title)+'</div>'+
+      (row.desc?'<div class="glDesc">'+escapeHtml(row.desc)+'</div>':'')+
+      '<div class="glMeta"><b>'+escapeHtml(meta)+'</b>'+(sub.length?' ・ '+escapeHtml(sub.join(' ・ ')):'')+'</div>'+
+      (tags?'<div class="glTags">'+tags+'</div>':'')+
+    '</button>'+
+    '<div class="glLinks">'+
+      (row.url?'<a class="glLink" href="'+escAttr(row.url)+'" target="_blank" rel="noopener">ゲーム情報 ↗</a>':'')+
+      '<span class="glGoMap" data-i="'+i+'">地図で見る →</span>'+
+    '</div>'+
+    '</div>';
+}
+function renderGlPage(reset){
+  if(!glList)return;
+  if(reset){glList.innerHTML='';glShown=0;}
+  var end=Math.min(glShown+GL_PAGE,glMatches.length), h='';
+  for(var i=glShown;i<end;i++)h+=glItemHtml(glMatches[i],i);
+  if(!glMatches.length){glList.innerHTML='<div class="glEmpty">条件に合うゲームがありません</div>';}
+  else{glList.insertAdjacentHTML('beforeend',h);}
+  glShown=end;
+  if(glMore)glMore.className=(glShown<glMatches.length)?'show':'';
+}
+function applyGlFilter(){
+  glMatches=[];
+  var tl=groupLists(glFilter.time), gl=groupLists(glFilter.genre);
+  for(var i=0;i<glRows.length;i++)if(glMatch(glRows[i],tl,gl))glMatches.push(glRows[i]);
+  if(glCount)glCount.textContent=glMatches.length+'件'+(glRows.length!==glMatches.length?' / 全'+glRows.length+'件':'');
+  renderGlPage(true);
+  if(glList)glList.scrollTop=0;
+}
+function switchTab(name){
+  if(!appEl)return;
+  var cls=appEl.className.replace(/\btab-games\b/,'').trim();
+  appEl.className=(name==='games')?(cls+' tab-games').trim():cls;
+  if(tabBar){
+    var bs=tabBar.getElementsByTagName('button');
+    for(var i=0;i<bs.length;i++)bs[i].className=(bs[i].getAttribute('data-tab')===name)?'active':'';
+  }
+  if(name==='games'&&!glShown&&glMatches.length===0&&glRows.length)applyGlFilter();
+}
+function openGameOnMap(row){
+  var b=boothForPlace(row.place);
+  if(!b)return;
+  switchTab('map');
+  if(view.zoom<1.5){view.zoom=1.8;}
+  var games=gameDetailsFor(b), hit=null;
+  for(var i=0;i<games.length;i++){
+    if((row.url&&games[i].url===row.url)||games[i].title===row.title){hit=games[i];break;}
+  }
+  selectGameResult(b,hit);
+}
+if(tabBar){
+  tabBar.onclick=function(e){
+    var n=e.target;
+    while(n&&n!==tabBar&&!n.getAttribute('data-tab'))n=n.parentNode;
+    if(n&&n!==tabBar)switchTab(n.getAttribute('data-tab'));
+  };
+}
+function glChipClick(e){
+  var n=e.target;
+  while(n&&!n.getAttribute&&n.parentNode)n=n.parentNode;
+  while(n&&n.getAttribute&&!n.getAttribute('data-g'))n=n.parentNode;
+  if(!n||!n.getAttribute)return;
+  var g=n.getAttribute('data-g'), v=n.getAttribute('data-v');
+  if(!g)return;
+  var st=glFilter[g][v]||0;
+  st=(st===0)?1:((st===1)?-1:0);
+  if(st)glFilter[g][v]=st; else delete glFilter[g][v];
+  renderGlChips();
+  applyGlFilter();
+}
+if(glTime)glTime.onclick=glChipClick;
+if(glGenres)glGenres.onclick=glChipClick;
+if(glGenreToggle)glGenreToggle.onclick=function(){
+  var open=appEl.className.indexOf('gl-genres-open')>=0;
+  appEl.className=open?appEl.className.replace(/\s*gl-genres-open/,''):(appEl.className+' gl-genres-open').trim();
+};
+if(glList)glList.onclick=function(e){
+  var n=e.target;
+  while(n&&n!==glList&&!(n.getAttribute&&n.getAttribute('data-i')))n=n.parentNode;
+  if(!n||n===glList)return;
+  var row=glMatches[parseInt(n.getAttribute('data-i'),10)];
+  if(row)openGameOnMap(row);
+};
+if(glMore)glMore.onclick=function(){renderGlPage(false);};
+if(glReset)glReset.onclick=function(){glFilter.time={};glFilter.genre={};renderGlChips();applyGlFilter();};
+if(glSearchEl)glSearchEl.oninput=function(){glFilter.q=normalizeSearchText(glSearchEl.value);applyGlFilter();};
+if(glClearEl)glClearEl.onclick=function(){if(glSearchEl)glSearchEl.value='';glFilter.q='';applyGlFilter();};
+buildGlRows();
+renderGlChips();
+applyGlFilter();
 })();
 
 (function(){
@@ -841,6 +1054,12 @@ window.onresize=resetView; resetView(); updatePanel(); updateSearchModeUi(); ope
       });
     });
   }
+
+
+
+
+
+
 })();
 
 // Prevent browser/page zoom; keep zooming limited to the SVG canvas controls.
