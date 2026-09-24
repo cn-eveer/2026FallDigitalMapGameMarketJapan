@@ -1177,12 +1177,12 @@
    これで textarea がタブ領域の余白いっぱいまで伸びる。 */
 #infoPanel #memoTab.active{display:flex!important;flex-direction:column!important;height:auto!important}
 #infoPanel #memoTab.active .memoBox{flex:1 1 auto!important;height:auto!important;min-height:0!important;display:flex!important;flex-direction:column!important}
-#infoPanel #memoTab.active .memoBox textarea{flex:1 1 auto!important;min-height:180px!important;max-height:none!important}
+#infoPanel #memoTab.active .memoBox textarea{flex:1 1 180px!important;min-height:0!important;max-height:none!important}
 /* パネルは内容ぶんの高さしか持たない（height ではなく max-height 指定）ので、
    flex-grow には配れる余白がない。入力欄の下限を決めて実寸を稼ぐ。
    画面の低い端末では下限を外し、タブ領域の上限側で従来どおり収める。 */
 @media(max-height:700px){
-  #infoPanel #memoTab.active .memoBox textarea{min-height:110px!important}
+  #infoPanel #memoTab.active .memoBox textarea{flex-basis:110px!important;min-height:0!important}
 }
 
 /* ======================================================================
@@ -1228,11 +1228,11 @@
 
   /* 右: タブ本体は列いっぱいに。メモは2カラムぶんの高さを使える */
   #infoPanel .infoColRight .tabPanel.active{max-height:none!important}
-  #infoPanel .infoColRight #memoTab.active .memoBox textarea{min-height:220px!important}
+  #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex-basis:220px!important;min-height:0!important}
 }
 
 @media (min-width:360px) and (max-height:700px){
-  #infoPanel .infoColRight #memoTab.active .memoBox textarea{min-height:130px!important}
+  #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex-basis:130px!important;min-height:0!important}
 }
 
 /* ----------------------------------------------------------------------
@@ -1275,4 +1275,108 @@
   overflow-y:auto!important;
   overflow-x:hidden!important;
   resize:none!important;
+}
+
+/* ----------------------------------------------------------------------
+   iOS でキーボードが開くと lockWidth() が #app を縮めるが、vh / dvh は
+   縮まないのでパネルがはみ出して見切れる。#app を基準にした % の上限を
+   足して、実際に使える高さに追従させる（min() なので小さいほうが効く）。
+   ---------------------------------------------------------------------- */
+@media (max-width:700px){
+  #infoPanel{
+    max-height:min(
+      74vh,
+      calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      calc(100% - 76px - env(safe-area-inset-bottom))
+    )!important;
+  }
+}
+@media (max-width:430px) and (max-height:700px){
+  #infoPanel{
+    max-height:min(
+      70vh,
+      calc(100dvh - 134px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      calc(100% - 76px - env(safe-area-inset-bottom))
+    )!important;
+  }
+}
+
+/* 入力欄は「余裕があれば基準の高さ、足りなければ縮む」。min-height で固定すると
+   キーボードでパネルが縮んだときに縮めず、箱からはみ出してしまう。 */
+#infoPanel #memoTab.active .memoBox textarea{
+  flex:1 1 180px!important;
+  min-height:0!important;
+}
+@media (min-width:360px){
+  #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex-basis:220px!important}
+}
+@media (max-height:700px){
+  #infoPanel #memoTab.active .memoBox textarea{flex-basis:130px!important}
+}
+
+/* 2カラム時: ブース概要は3行固定をやめ、左カラムの高さいっぱいまで表示して
+   あふれたぶんだけ内部スクロールする。 */
+@media (min-width:360px){
+  #infoPanel .infoColLeft #overviewPanel{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+  }
+  #infoPanel .infoColLeft .overviewHeading{flex:0 0 auto!important}
+  #infoPanel .infoColLeft .overviewText{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+  }
+}
+
+/* ブース概要はメモ欄(14px)に比べて小さすぎたので少し大きくする */
+#infoPanel .overviewText{font-size:13px!important;line-height:1.5!important}
+#infoPanel .overviewHeading{font-size:12px!important}
+@media (max-width:430px){
+  #infoPanel .overviewText{font-size:12px!important;line-height:1.45!important}
+  #infoPanel .overviewHeading{font-size:11px!important}
+}
+
+/* 概要が長いと左カラムが伸びてパネル全体の高さを決めてしまうので、
+   概要テキストの基準高さを 0 にして「右カラム(メモ)が決めた高さに左が合わせ、
+   あふれたぶんは概要の中でスクロール」という関係にする。 */
+@media (min-width:360px){
+  #infoPanel .infoColLeft .overviewText{flex:1 1 0!important}
+}
+
+/* ----------------------------------------------------------------------
+   パネルの高さをブースごとに変えず固定する。
+   これまでは内容なりの高さ（max-height だけ）だったので、概要やゲーム数に
+   よって毎回高さが変わっていた。max-height と同じ式を height にも与えて
+   常に同じ大きさにし、余った高さはメモ欄が伸びて埋める。
+   キーボードで #app が縮んだときは 100% の項が効いて一緒に縮む。
+   ---------------------------------------------------------------------- */
+/* 高さが固定になったので、タブ領域の上限は外して余白ぶんまで広げる */
+@media (min-width:360px){
+  #infoPanel .infoColRight .tabPanel.active{max-height:none!important}
+}
+
+/* パネルに固定高を与えたので、中身も最後まで伸ばす。
+   .infoPanelInner は flex-grow が無く内容なりの高さのままで、下に余白が
+   できていた。伸ばすとメモ欄まで余白が行き渡る。 */
+#infoPanel .infoPanelInner{flex:1 1 auto!important}
+
+/* 下限の高さも持たせる。ただし素の 300px にすると、キーボードで #app が
+   縮んだときに下限が勝ってはみ出すので、使える高さ側でも clamp する
+   （min() なので「300px と 使える高さ の小さいほう」が下限になる）。 */
+
+/* ----------------------------------------------------------------------
+   パネルの高さは常に同じ 460px。ブースが変わっても、画面の高さが変わっても
+   伸び縮みしない。唯一の例外は「そもそも 460px 入らない」ケースで、
+   max-height だけは残す（これが無いとキーボードを出したときに画面外へ出る）。
+   ---------------------------------------------------------------------- */
+@media (max-width:700px){
+  #infoPanel.show{
+    height:460px!important;
+    min-height:0!important;
+    max-height:calc(100% - 76px - env(safe-area-inset-bottom))!important;
+  }
 }
