@@ -38,6 +38,7 @@
 ├── scrape_gamemarket_booth_list.py     # ① ブース一覧を取得
 ├── scrape_gamemarket_booths.py         # ② ブース概要・ゲーム一覧を取得
 ├── build_detail_rows.py                # ③ ②の結果を js/data.js に取り込む
+├── build_genres.py                     # ④ 絞り込み用の列を付け直す
 └── docs/
     └── README_scrape_gamemarket_separated.md
 ```
@@ -62,9 +63,11 @@
 | --- | --- |
 | ブース掲載数（一覧ベース） | 1,427 |
 | ユニークなブースページ | 1,425 |
-| ブース概要が登録されているブース | 1,031 |
-| ゲーム登録があるブース | 852 |
-| ゲーム総数 | 5,871 |
+| ブース概要が登録されているブース | 1,052 |
+| ゲーム登録があるブース | 873 |
+| ゲーム総数 | 5,973 |
+
+最終取得: 2026-09-24
 
 内訳: 一般土曜 520 / 一般日曜 328 / 一般両日 470 / エリア 92 / 特設 17
 
@@ -89,10 +92,22 @@ python3 scrape_gamemarket_booths.py \
 
 # ③ 取得結果を js/data.js に取り込む
 python3 build_detail_rows.py --prefix gm2026a_all
+
+# ④ ゲーム一覧の絞り込み用の列（プレイ時間・ジャンル）を付け直す
+#    ③ は 10 列しか書かないので、④ を飛ばすと時間チップとジャンルチップが
+#    すべて無反応になります。--carry-from に更新前の data.js を渡すこと。
+cp js/data.js /tmp/data_before_update.js   # ③ を走らせる前に取っておく
+python3 build_genres.py --carry-from /tmp/data_before_update.js \
+    --report new_games.json
 ```
 
 ③ は `js/data.js` の `BOOTH_DETAIL_ROWS` と `GAME_DETAIL_ROWS` だけを置き換えます
 （地図データはそのまま）。
+
+④ の `time_bucket` / `playerTags` / `form` はスクレイプ結果から計算し直しますが、
+ジャンル（`genre1` / `genre2`）は計算では復元できないため、ゲーム URL をキーに
+更新前の `data.js` から引き継ぎます。前回以降に増えたゲームはジャンルが空のまま
+`--report` の JSON に書き出されるので、必要ならそこだけ手で付けてください。
 
 途中から再開したいときは `--start` / `--limit` で分割できます（詳細は
 `docs/README_scrape_gamemarket_separated.md`）。
