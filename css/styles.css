@@ -1136,6 +1136,7 @@
 .glCount{margin-top:6px;font-size:10px;font-weight:900;color:#64748b}
 .glList{flex:1 1 auto;overflow:auto;padding:8px 10px 0;-webkit-overflow-scrolling:touch}
 .glItem{border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:6px;box-shadow:0 2px 6px rgba(15,23,42,.05);overflow:hidden}
+@media (min-width:901px){.glList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;align-content:start;gap:10px;padding:10px}.glItem{display:flex;flex-direction:column;margin-bottom:0}.glItemMain{flex:1 1 auto}.glLinks{flex:0 0 auto}}
 .glItemMain{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px}
 .glLinks{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #eef2f7;padding:6px 10px}
 .glLink{font-size:11px;font-weight:900;color:#2563eb;text-decoration:none}
@@ -1150,8 +1151,7 @@
 .glTag.t-light{background:#fef3c7;color:#b45309}
 .glTag.t-heavy{background:#fee2e2;color:#b91c1c}
 .glTag.g{background:#e0e7ff;color:#3730a3}
-#glMore{display:none;flex:0 0 auto;margin:0 10px 10px;height:36px;border:0;border-radius:11px;background:#111827;color:#fff;font-weight:900;font-size:12px}
-#app.tab-games #glMore.show{display:block}
+@media (min-width:701px){.glTitle{font-size:clamp(18px,1.6vw,28px);line-height:1.25}.glDesc{font-size:clamp(13px,1.05vw,18px);line-height:1.4}.glMeta{font-size:clamp(13px,1vw,17px);line-height:1.35}.glTags{gap:6px;margin-top:7px}.glTag{font-size:clamp(11px,.9vw,15px);padding:4px 10px}.glLinks{gap:12px;padding:8px 10px}.glLink,.glGoMap{font-size:clamp(13px,1vw,17px);line-height:1.25}}
 .glEmpty{padding:24px 8px;text-align:center;font-size:11px;font-weight:900;color:#64748b}
 
 .glChip{position:relative;transition:background .12s,border-color .12s}
@@ -1164,3 +1164,4 @@
 
 .glChip.off{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 1px 4px rgba(220,38,38,.3)}
 .glChip.off .glChipTick{display:inline-block;font-weight:900}
+@media (min-width:701px){#glGenreToggle{height:36px;font-size:clamp(13px,1vw,17px);border-radius:11px}.glFamLabel{font-size:clamp(12px,.9vw,15px);margin-bottom:5px}.glFamChips{gap:6px}.glChip{font-size:clamp(13px,1vw,17px);padding:7px 14px}.glChipTick{font-size:clamp(12px,.9vw,15px)}.glCount{font-size:clamp(12px,.9vw,15px)}#glReset{font-size:clamp(12px,.9vw,15px);padding:6px 12px}}

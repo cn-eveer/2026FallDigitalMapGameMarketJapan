@@ -744,7 +744,7 @@ var appEl=document.getElementById('app'),
     glGenres=document.getElementById('glGenres'), glGenreToggle=document.getElementById('glGenreToggle'),
     glGenreCount=document.getElementById('glGenreCount'), glCount=document.getElementById('glCount'),
     glSearchEl=document.getElementById('glSearch'), glClearEl=document.getElementById('glClear'),
-    glMore=document.getElementById('glMore'), glReset=document.getElementById('glReset');
+    glReset=document.getElementById('glReset');
 var GL_PAGE=60;
 var glFilter={time:{},genre:{},q:''}, glRows=[], glMatches=[], glShown=0;
 var PLACE_BOOTH=null, BOOTH_NAME_CACHE={};
@@ -872,7 +872,19 @@ function renderGlPage(reset){
   if(!glMatches.length){glList.innerHTML='<div class="glEmpty">条件に合うゲームがありません</div>';}
   else{glList.insertAdjacentHTML('beforeend',h);}
   glShown=end;
-  if(glMore)glMore.className=(glShown<glMatches.length)?'show':'';
+}
+/* 「もっと見る」は押さずに済むよう、スクロールで自動的に続きを足す。
+   タブが非表示のうちは clientHeight が 0 なので、そのときは足さない
+   (0 <= 0 が永久に成り立ち、全件を一度に描いてしまうため)。 */
+function glAutoFill(){
+  if(!glList)return;
+  var guard=0;
+  while(glShown<glMatches.length&&glList.clientHeight>0&&
+        glList.scrollHeight<=glList.clientHeight+8&&guard++<60)renderGlPage(false);
+}
+function glOnScroll(){
+  if(!glList||glShown>=glMatches.length)return;
+  if(glList.scrollTop+glList.clientHeight>=glList.scrollHeight-600)renderGlPage(false);
 }
 function applyGlFilter(){
   glMatches=[];
@@ -881,6 +893,7 @@ function applyGlFilter(){
   if(glCount)glCount.textContent=glMatches.length+'件'+(glRows.length!==glMatches.length?' / 全'+glRows.length+'件':'');
   renderGlPage(true);
   if(glList)glList.scrollTop=0;
+  glAutoFill();
 }
 function switchTab(name){
   if(!appEl)return;
@@ -890,7 +903,10 @@ function switchTab(name){
     var bs=tabBar.getElementsByTagName('button');
     for(var i=0;i<bs.length;i++)bs[i].className=(bs[i].getAttribute('data-tab')===name)?'active':'';
   }
-  if(name==='games'&&!glShown&&glMatches.length===0&&glRows.length)applyGlFilter();
+  if(name==='games'){
+    if(!glShown&&glMatches.length===0&&glRows.length)applyGlFilter();
+    glAutoFill();
+  }
 }
 function openGameOnMap(row){
   var b=boothForPlace(row.place);
@@ -936,7 +952,7 @@ if(glList)glList.onclick=function(e){
   var row=glMatches[parseInt(n.getAttribute('data-i'),10)];
   if(row)openGameOnMap(row);
 };
-if(glMore)glMore.onclick=function(){renderGlPage(false);};
+if(glList)glList.onscroll=glOnScroll;
 if(glReset)glReset.onclick=function(){glFilter.time={};glFilter.genre={};renderGlChips();applyGlFilter();};
 if(glSearchEl)glSearchEl.oninput=function(){glFilter.q=normalizeSearchText(glSearchEl.value);applyGlFilter();};
 if(glClearEl)glClearEl.onclick=function(){if(glSearchEl)glSearchEl.value='';glFilter.q='';applyGlFilter();};
@@ -964,7 +980,7 @@ applyGlFilter();
   document.addEventListener('touchmove',function(e){
     var t=e.target;
     while(t&&t!==document.body){
-      if(t.id==='mapSvg'||t.id==='panel'||t.id==='infoPanel'||t.id==='suggestions'||(t.classList&&(t.classList.contains('controls')||t.classList.contains('searchRow')||t.classList.contains('userRow')))||t.tagName==='INPUT'||t.tagName==='TEXTAREA')return;
+      if(t.id==='mapSvg'||t.id==='panel'||t.id==='infoPanel'||t.id==='suggestions'||t.id==='gameListView'||(t.classList&&(t.classList.contains('controls')||t.classList.contains('searchRow')||t.classList.contains('userRow')))||t.tagName==='INPUT'||t.tagName==='TEXTAREA')return;
       t=t.parentNode;
     }
     e.preventDefault();
