@@ -1369,14 +1369,21 @@
    （min() なので「300px と 使える高さ の小さいほう」が下限になる）。 */
 
 /* ----------------------------------------------------------------------
-   パネルの高さは常に同じ 460px。ブースが変わっても、画面の高さが変わっても
-   伸び縮みしない。唯一の例外は「そもそも 460px 入らない」ケースで、
-   max-height だけは残す（これが無いとキーボードを出したときに画面外へ出る）。
+   パネルの高さは画面の 1/3。#app 基準の % なので、キーボードで #app が
+   縮んだときも一緒に縮む。max-height は「そもそも入らない」ケースの保険。
    ---------------------------------------------------------------------- */
 @media (max-width:700px){
   #infoPanel.show{
-    height:460px!important;
+    height:33.333%!important;
     min-height:0!important;
     max-height:calc(100% - 76px - env(safe-area-inset-bottom))!important;
   }
+}
+
+/* 右カラムのタブ本体を列の下端まで伸ばす。memoTab / gamesTab に flex-grow が
+   無かったため、入力欄の基準高さ(220px)で止まり、ブース概要の下端との間に
+   余白が残っていた。基準高さも 0 にして、列の高さに合わせて伸び縮みさせる。 */
+@media (min-width:360px){
+  #infoPanel .infoColRight .tabPanel.active{flex:1 1 0!important;min-height:0!important}
+  #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex:1 1 0!important;min-height:0!important}
 }
