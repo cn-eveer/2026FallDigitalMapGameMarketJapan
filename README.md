@@ -39,6 +39,8 @@
 ├── scrape_gamemarket_booths.py         # ② ブース概要・ゲーム一覧を取得
 ├── build_detail_rows.py                # ③ ②の結果を js/data.js に取り込む
 ├── build_genres.py                     # ④ 絞り込み用の列を付け直す
+├── merge_extra_games.py                # ⑤ 公式サイト外のゲーム（X・ボドゲゴー等）を追加
+├── data_extra/                         # ⑤ の入力 CSV・除外リスト・手付けジャンル
 └── docs/
     └── README_scrape_gamemarket_separated.md
 ```
@@ -63,11 +65,11 @@
 | --- | --- |
 | ブース掲載数（一覧ベース） | 1,427 |
 | ユニークなブースページ | 1,425 |
-| ブース概要が登録されているブース | 1,091 |
-| ゲーム登録があるブース | 917 |
-| ゲーム総数 | 6,194 |
+| ブース概要が登録されているブース | 1,106 |
+| ゲーム登録があるブース | 921 |
+| ゲーム総数 | 6,396（公式サイト 6,197 ＋ 追加分 199） |
 
-最終取得: 2026-10-05
+最終取得: 2026-10-08
 
 内訳: 一般土曜 520 / 一般日曜 328 / 一般両日 470 / エリア 92 / 特設 17
 
@@ -108,6 +110,23 @@ python3 build_genres.py --carry-from /tmp/data_before_update.js \
 ジャンル（`genre1` / `genre2`）は計算では復元できないため、ゲーム URL をキーに
 更新前の `data.js` から引き継ぎます。前回以降に増えたゲームはジャンルが空のまま
 `--report` の JSON に書き出されるので、必要ならそこだけ手で付けてください。
+
+### 公式サイト外のゲームを追加する
+
+X・ボドゲゴー・ブースブログ・各社サイトで告知されたゲームは
+`data_extra/gm2026a_saturday_games.csv` にまとめ、③④ のあとに取り込みます。
+③④ は `GAME_DETAIL_ROWS` をスクレイプ結果だけで作り直すので、再取得のたびに
+⑤ も走らせ直してください（何度実行しても同じ結果になります）。
+
+```bash
+# ⑤ CSV のうち、まだ無いゲームだけを追加
+python3 merge_extra_games.py --report new_extra_games.json
+```
+
+- 既存データと URL が同じ行、または同じブースに同名ゲームがある行は追加しません。
+- 表記ゆれで重複するものは `data_extra/exclude.tsv`（`place<TAB>title`）に書いて除外します。
+- ジャンルは `data_extra/genres.tsv`（`place<TAB>title<TAB>genre1<TAB>genre2`）で手付けします。
+- 追加した行は 16 列目に `extra` が入ります。タグ列には「新作」「試遊あり」を入れています。
 
 途中から再開したいときは `--start` / `--limit` で分割できます（詳細は
 `docs/README_scrape_gamemarket_separated.md`）。

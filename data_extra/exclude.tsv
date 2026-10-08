@@ -1,0 +1,25 @@
+# place<TAB>title — CSV rows that duplicate a game already in GAME_DETAIL_ROWS
+# under a different spelling (merge_extra_games.py skips these).
+エリア53	ダイススローン 燃え盛る闘志
+エリア53	ダイス スローン 力と意志
+両-B041	掃除屋　撃墜君
+両-C020	アウェイクヒーローズVol1
+両-C038	MUSHROOM SORT
+両-C038	Only One Collection
+土-G021	返本or実売
+土-G021	ゾンビラン
+土-H099	Fine Line
+土-J034	逆富豪
+土-J040	サイトホルダー
+土-K011	ドッペルハンド
+土-K014	ワードコンセプ塔
+土-M034	黄昏廻路
+土-M099	ふえるメジェドちゃん
+土-M099	キュウビズム
+土-M127	【MR.DARTS拡張inferno】
+土-M127	【鬼灯~Hozuki~】
+土-M132	ZIXZA（ジグザ）新版
+土-P015	DokkoiカードスタンドM250
+両-U002	体験推理小説『さよ、かほ、れおの通信簿』
+両-U002	体験推理小説『一枚のハガキが導く説明』
+両-U002	体験推理小説『七枚の名刺に隠された関係』

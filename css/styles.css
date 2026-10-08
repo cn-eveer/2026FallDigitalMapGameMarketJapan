@@ -1382,8 +1382,10 @@
 
 /* 右カラムのタブ本体を列の下端まで伸ばす。memoTab / gamesTab に flex-grow が
    無かったため、入力欄の基準高さ(220px)で止まり、ブース概要の下端との間に
-   余白が残っていた。基準高さも 0 にして、列の高さに合わせて伸び縮みさせる。 */
-@media (min-width:360px){
+   余白が残っていた。基準高さも 0 にして、列の高さに合わせて伸び縮みさせる。
+   スマホ（パネル高さ固定）のみ。PC はパネルが内容なりの高さなので、基準高さを
+   0 にすると高さを決めるものが無くなりパネルが潰れる（220px のまま）。 */
+@media (min-width:360px) and (max-width:700px){
   #infoPanel .infoColRight .tabPanel.active{flex:1 1 0!important;min-height:0!important}
   #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex:1 1 0!important;min-height:0!important}
 }
