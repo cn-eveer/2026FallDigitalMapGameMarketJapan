@@ -106,7 +106,9 @@ def enrich(rows: list[list], carry: dict[str, list]) -> tuple[list[list], list[l
         r[11], r[12] = prev[0], prev[1]
         r[13] = player_bucket(r[4])
         r[14] = mode_of(r[7])
-        r[15] = prev[2]
+        # "extra" marks rows merge_extra_games.py added; a scraped row must not
+        # inherit it, or the next merge run drops the row as if it were extra.
+        r[15] = "" if prev[2] == "extra" else prev[2]
         if not seen:
             fresh.append(r)
         out.append(r)

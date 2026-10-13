@@ -87,6 +87,11 @@ def tags_of(row: dict) -> str:
     return ", ".join(out)
 
 
+def desc_of(text: str) -> str:
+    """Blog rows start with a fragment of the post's HTML: '" class="icon">'."""
+    return re.sub(r'^"?\s*class="icon">\s*', "", (text or "").strip())
+
+
 def to_game_row(row: dict) -> list:
     players = range_of(row["プレイ人数"], "人")
     play_time = range_of(row["プレイ時間"], "分")
@@ -95,7 +100,7 @@ def to_game_row(row: dict) -> list:
     return [
         place_of(row),
         f"[{row['ゲーム名'].strip()}]",
-        row["概要"].strip(),
+        desc_of(row["概要"]),
         price_of(row["価格"]),
         players,
         play_time,
@@ -120,6 +125,8 @@ def main() -> int:
     ap.add_argument("--exclude", default="data_extra/exclude.tsv")
     ap.add_argument("--genres", default="data_extra/genres.tsv",
                     help="手で付けたジャンル（place<TAB>title<TAB>genre1<TAB>genre2）")
+    ap.add_argument("--rename", default="data_extra/rename.tsv",
+                    help="ブログ記事タイトル→ゲーム名（place<TAB>title<TAB>new title）")
     ap.add_argument("--report", help="ジャンル未設定の追加ゲームを書き出す JSON")
     args = ap.parse_args()
 
@@ -149,17 +156,37 @@ def main() -> int:
                 place, _, title = line.partition("\t")
                 excluded.add((place.strip(), norm_title(title)))
 
+    renames: dict[tuple, str] = {}
+    rn = Path(args.rename)
+    if rn.exists():
+        for line in rn.read_text(encoding="utf-8").splitlines():
+            if line.strip() and not line.startswith("#"):
+                cols = (line.split("\t") + ["", ""])[:3]
+                renames[(cols[0].strip(), norm_title(cols[1]))] = cols[2].strip()
+
     known_urls = {r[9] for r in rows if r[9]}
     known_titles = {(r[0], norm_title(r[1])) for r in rows}
 
     with open(args.csv, encoding="utf-8-sig", newline="") as f:
         src = list(csv.DictReader(f))
+    # Renamed rows are blog posts about a game; take them last so a real row
+    # for the same game (with proper details) wins the title match.
+    src.sort(key=lambda s: (place_of(s), norm_title(s["ゲーム名"])) in renames)
 
     added, skipped_url, skipped_title, skipped_ex = [], 0, 0, 0
     for s in src:
         g = to_game_row(s)
+        orig = (g[0], norm_title(g[1]))
+        if orig in excluded:
+            skipped_ex += 1
+            continue
+        if orig in renames:
+            g[1] = f"[{renames[orig]}]"
         key = (g[0], norm_title(g[1]))
-        if g[9] and g[9] in known_urls and g[9].startswith("https://gamemarket.jp/game/"):
+        # 詳細URL may be an X post or blog while 公式ゲームページ (added to the
+        # CSV on 2026-10-13) points at the scraped gamemarket.jp page.
+        urls = {g[9], (s.get("公式ゲームページ") or "").strip()}
+        if any(u in known_urls and u.startswith("https://gamemarket.jp/game/") for u in urls if u):
             skipped_url += 1
             continue
         if key in known_titles:
