@@ -492,6 +492,7 @@ function updatePanel(){
       }
     }
   }
+  fitFavPanel();
 }
 function findById(id){for(var i=0;i<booths.length;i++)if(booths[i].id===id)return booths[i]; return null;}
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -745,6 +746,34 @@ window.addEventListener('popstate',function(){
     drawMarkers();
   }
 });
+// お気に入りパネルは空いている高さまで伸ばす。スマホでは下のブース情報パネルの上端で止め、
+// 地図が見えなくならないよう画面の高さの 55% を上限にする。
+function fitFavPanel(){
+  if(!panel||!favBody||panel.className.indexOf('open')<0)return;
+  var top=favBody.getBoundingClientRect().top, vh=window.innerHeight, limit=vh;
+  var tb=document.getElementById('tabBar'); if(tb&&tb.offsetParent!==null)limit=Math.min(limit,tb.getBoundingClientRect().top);
+  if(infoPanel&&infoPanel.className.indexOf('show')>=0&&window.innerWidth<=700){var ir=infoPanel.getBoundingClientRect(); if(ir.top>top)limit=Math.min(limit,ir.top);}
+  limit=Math.min(limit-8,top+vh*.55);
+  favBody.style.maxHeight=Math.max(120,Math.floor(limit-top))+'px';
+}
+if(infoPanel&&window.MutationObserver)new MutationObserver(fitFavPanel).observe(infoPanel,{attributes:true,attributeFilter:['class']});
+window.addEventListener('resize',fitFavPanel);
+// ブースリスト / ゲームリストの見出しで開閉。開閉状態はこの端末に保存する。
+(function(){
+  var KEY='eventHallFavSectionsCollapsed.v1', collapsed={};
+  try{collapsed=JSON.parse(storageGet(KEY,'{}'))||{};}catch(e){collapsed={};}
+  var btns=favBody?favBody.querySelectorAll('.favSectionToggle'):[];
+  function apply(btn){
+    var id=btn.getAttribute('data-target'), list=document.getElementById(id), shut=!!collapsed[id];
+    if(list)list.style.display=shut?'none':'';
+    btn.setAttribute('aria-expanded',shut?'false':'true');
+    var arrow=btn.querySelector('.favSectionArrow'); if(arrow)arrow.textContent=shut?'▾':'▴';
+  }
+  for(var i=0;i<btns.length;i++){
+    apply(btns[i]);
+    btns[i].onclick=function(){var id=this.getAttribute('data-target'); collapsed[id]=!collapsed[id]; storageSet(KEY,JSON.stringify(collapsed)); apply(this);};
+  }
+})();
 window.onresize=resetView; resetView(); updatePanel(); updateSearchModeUi(); openBoothFromUrl();
 
 /* ======================================================================

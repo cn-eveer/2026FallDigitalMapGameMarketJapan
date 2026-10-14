@@ -1390,3 +1390,32 @@
   #infoPanel .infoColRight #memoTab.active .memoBox textarea{flex:1 1 0!important;min-height:0!important}
 }
 .favGameTitle{font-size:10px;font-weight:900;color:#334155;margin:7px 0 4px 0}.favGameList{display:flex;flex-direction:column;gap:3px;max-height:110px;overflow:auto}.favGameItem{display:flex;align-items:center;justify-content:space-between;gap:4px;border:1px solid #fde68a;border-radius:7px;background:#fffbeb;padding:4px 5px;font-size:9px;font-weight:900;line-height:1.1;cursor:pointer}.favGameItem>span{min-width:0;flex:1;display:flex;flex-direction:column}.favGameName,.favGameItem small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.favGameItem small{font-size:8px;color:#64748b;font-weight:800}.favGameItem button{flex:0 0 auto;border:0;background:#fef3c7;color:#b45309;border-radius:6px;font-weight:900;padding:2px 5px;font-size:9px}@media(max-width:430px){.favGameTitle{font-size:9px}.favGameList{max-height:80px}.favGameItem{font-size:8px;padding:3px 4px}.favGameItem small{font-size:7px}}
+
+/* お気に入りパネル: リストを大きく読みやすくし、パネル全体（#favBody）で1本スクロール。
+   高さの上限は fitFavPanel() が空き高さから決める。 */
+#panel.favPanel{width:min(260px,calc(100vw - 20px))}
+#panel.favPanel #favBody{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#panel.favPanel #favList,#panel.favPanel .favGameList,#panel.favPanel .againList{max-height:none;overflow:visible;gap:4px}
+#panel.favPanel .favTitle,#panel.favPanel .favGameTitle,#panel.favPanel .againTitle{font-size:12px}
+#panel.favPanel .favGameTitle,#panel.favPanel .againTitle{margin:9px 0 4px 0}
+#panel.favPanel .favItem,#panel.favPanel .favGameItem,#panel.favPanel .againItem{font-size:12px;padding:7px 7px;border-radius:8px;line-height:1.2}
+#panel.favPanel .favGameItem small{font-size:10px;margin-top:2px}
+#panel.favPanel .favItem button,#panel.favPanel .favGameItem button,#panel.favPanel .againItem button{font-size:11px;padding:4px 7px}
+#panel.favPanel .visitDot{width:16px;height:16px}
+@media(max-width:430px){
+  #panel.favPanel{width:min(240px,calc(100vw - 16px))}
+  #panel.favPanel .favTitle,#panel.favPanel .favGameTitle,#panel.favPanel .againTitle{font-size:11px}
+  #panel.favPanel .favItem,#panel.favPanel .favGameItem,#panel.favPanel .againItem{font-size:11px;padding:6px 6px}
+  #panel.favPanel .favGameItem small{font-size:9px}
+  #panel.favPanel .favItem button,#panel.favPanel .favGameItem button,#panel.favPanel .againItem button{font-size:10px;padding:3px 6px}
+}
+/* 見出しを開閉ボタンにする */
+#panel.favPanel .favSectionToggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-radius:7px;background:#f1f5f9;color:#334155;font-weight:900;padding:6px 8px;text-align:left;cursor:pointer;line-height:1.1}
+#panel.favPanel .favSectionToggle .favSectionArrow{font-size:11px;color:#64748b}
+#panel.favPanel .favSectionToggle[aria-expanded="false"]{margin-bottom:0}
+/* リストごとにスクロール: #favBody を縦 flex にし、上限高さ（fitFavPanel）の中で
+   各リストが内容量に応じて縮み、あふれた分はそれぞれの中でスクロールする */
+#panel.favPanel.open #favBody{display:flex;flex-direction:column}
+#panel.favPanel #favBody>*{flex:0 0 auto}
+#panel.favPanel #favBody>.againList{max-height:96px;overflow-y:auto}
+#panel.favPanel #favBody>#favList,#panel.favPanel #favBody>.favGameList{flex:0 1 auto;min-height:72px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}

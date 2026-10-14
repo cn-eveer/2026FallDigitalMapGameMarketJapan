@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#f1f5f9" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=d9" />
+    <link rel="stylesheet" href="css/styles.css?v=d12" />
   </head>
   <body>
     <div id="app">
@@ -26648,9 +26648,13 @@
           <span>お気に入り</span><span id="favCount">0件 ▾</span>
         </button>
         <div id="favBody">
-          <div class="favTitle">お気に入りブースリスト</div>
+          <button type="button" class="favTitle favSectionToggle" data-target="favList">
+            <span>お気に入りブースリスト</span><span class="favSectionArrow">▴</span>
+          </button>
           <div id="favList"></div>
-          <div class="favGameTitle">お気に入りゲームリスト</div>
+          <button type="button" class="favGameTitle favSectionToggle" data-target="favGameList">
+            <span>お気に入りゲームリスト</span><span class="favSectionArrow">▴</span>
+          </button>
           <div id="favGameList" class="favGameList"></div>
           <div class="againTitle">もう一回行くリスト</div>
           <div id="againList" class="againList"></div>
@@ -26734,7 +26738,7 @@
       </nav>
       <div class="version">ver-2026A-d8</div>
     </div>
-    <script src="js/data.js?v=d9"></script>
-    <script src="js/app.js?v=d9"></script>
+    <script src="js/data.js?v=d12"></script>
+    <script src="js/app.js?v=d12"></script>
   </body>
 </html>
