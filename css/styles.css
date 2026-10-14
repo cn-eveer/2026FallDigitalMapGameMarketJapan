@@ -1419,3 +1419,31 @@
 #panel.favPanel #favBody>*{flex:0 0 auto}
 #panel.favPanel #favBody>.againList{max-height:96px;overflow-y:auto}
 #panel.favPanel #favBody>#favList,#panel.favPanel #favBody>.favGameList{flex:0 1 auto;min-height:72px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* お気に入りゲーム: 時間・価格・人数とジャンル */
+#panel.favPanel .favGameMeta{font-size:10px;font-weight:800;color:#334155;margin-top:3px;white-space:normal}
+#panel.favPanel .favGameGenres{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+#panel.favPanel .favGameGenre{font-size:9px;font-weight:900;border-radius:999px;padding:1px 6px;background:#e0e7ff;color:#3730a3}
+@media(max-width:430px){#panel.favPanel .favGameMeta{font-size:9px}#panel.favPanel .favGameGenre{font-size:8px}}
+/* 検索・全体を見るボタンをアイコン化。全体ボタンは検索バーと同じ高さの正方形にし、
+   空いた幅は検索バーに回す */
+.searchRow button#searchBtn{min-width:44px!important;width:44px!important;padding:0!important;display:flex!important;align-items:center;justify-content:center}
+#searchBtn svg,#resetBtn svg{display:block;flex:0 0 auto}
+#resetBtn{width:46px;max-width:46px;height:46px;padding:0;display:flex;align-items:center;justify-content:center}
+.controls{right:62px}
+#suggestions{width:calc(100vw - 72px)!important}
+@media(max-width:430px){
+  .searchRow button#searchBtn{min-width:40px!important;width:40px!important}
+  #resetBtn{width:44px;max-width:44px;height:44px;border-radius:15px}
+  .controls{right:58px}
+  #suggestions{width:calc(100vw - 16px)!important}
+}
+/* 虫眼鏡ボタンを細く。× は入力欄の右端に重ねて小さく透明にし、入力中だけ表示する */
+.searchRow button#searchBtn{min-width:34px!important;width:34px!important}
+.searchRow input#searchInput{padding-right:28px!important}
+.searchRow #clearSearchBtn{min-width:22px!important;width:22px!important;height:22px!important;align-self:center;margin:0 4px 0 -33px!important;padding:0!important;background:transparent!important;color:#94a3b8!important;border-radius:999px!important;font-size:15px!important;font-weight:700!important;line-height:1!important;position:relative;z-index:1}
+.searchRow #clearSearchBtn:hover{color:#475569!important;background:rgba(148,163,184,.15)!important}
+.searchRow input#searchInput:placeholder-shown+#clearSearchBtn{visibility:hidden}
+@media(max-width:430px){
+  .searchRow button#searchBtn{min-width:32px!important;width:32px!important}
+  .searchRow #clearSearchBtn{margin:0 4px 0 -31px!important;min-width:22px!important;width:22px!important;height:22px!important;font-size:15px!important}
+}

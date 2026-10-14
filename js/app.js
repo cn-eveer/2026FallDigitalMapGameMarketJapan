@@ -473,8 +473,14 @@ function updatePanel(){
     } else {
       var gh='';
       for(var k=0;k<favGames.length;k++){
-        var fg=favGames[k].item;
-        gh+='<div class="favGameItem" data-booth-id="'+escAttr(fg.boothId)+'"><span><span class="favGameName">'+escapeHtml(fg.title||'無題')+'</span><small>'+escapeHtml(fg.boothLabel||fg.place||'')+'</small></span><button type="button" data-watch-id="'+escAttr(favGames[k].id)+'">解除</button></div>';
+        var fg=favGames[k].item, gd=favGameDetail(favGames[k].id,fg), gm=[], gt='';
+        if(gd){
+          var tm=favRange(gd.time,'分'), pl=favRange(gd.players,'人'), pr=String(gd.price||'').replace(/^\s*-\s*$/,'');
+          if(tm)gm.push('⏱'+tm); if(pr)gm.push(pr); if(pl)gm.push('👥'+pl);
+          if(gd.genre)gt+='<span class="favGameGenre">'+escapeHtml(gd.genre)+'</span>';
+          if(gd.genre2)gt+='<span class="favGameGenre">'+escapeHtml(gd.genre2)+'</span>';
+        }
+        gh+='<div class="favGameItem" data-booth-id="'+escAttr(fg.boothId)+'"><span><span class="favGameName">'+escapeHtml(fg.title||'無題')+'</span><small>'+escapeHtml(fg.boothLabel||fg.place||'')+'</small>'+(gm.length?'<span class="favGameMeta">'+escapeHtml(gm.join(' ・ '))+'</span>':'')+(gt?'<span class="favGameGenres">'+gt+'</span>':'')+'</span><button type="button" data-watch-id="'+escAttr(favGames[k].id)+'">解除</button></div>';
       }
       favGameList.innerHTML=gh;
     }
@@ -493,6 +499,21 @@ function updatePanel(){
     }
   }
   fitFavPanel();
+}
+// お気に入りゲームの詳細（時間・価格・人数・ジャンル）は保存時ではなく表示時にゲームデータから引く
+function favGameDetail(id,item){
+  var b=findById(item.boothId); if(!b)return null;
+  var games=gameDetailsFor(b);
+  for(var i=0;i<games.length;i++)if(gameInterestId(b.id,games[i])===id)return games[i];
+  return null;
+}
+// "-150" → "〜150分", "480-540" → "480〜540分", "120-120" → "120分", "-" → ""
+function favRange(v,unit){
+  var m=String(v||'').replace(/\s/g,'').split('-'), a=m[0]||'', z=m.length>1?(m[1]||''):'';
+  if(!a&&!z)return '';
+  if(a&&!z)return m.length>1?a+unit+'〜':a+unit;
+  if(a===z)return a+unit;
+  return a+'〜'+z+unit;
 }
 function findById(id){for(var i=0;i<booths.length;i++)if(booths[i].id===id)return booths[i]; return null;}
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
