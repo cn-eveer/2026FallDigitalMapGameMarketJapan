@@ -1447,3 +1447,16 @@
   .searchRow button#searchBtn{min-width:32px!important;width:32px!important}
   .searchRow #clearSearchBtn{margin:0 4px 0 -31px!important;min-width:22px!important;width:22px!important;height:22px!important;font-size:15px!important}
 }
+/* ルート検索 */
+#panel.favPanel .favHead{display:flex;gap:4px}
+#panel.favPanel .favHead #favToggle{flex:1 1 auto;min-width:0}
+#routeBtn{flex:0 0 auto;height:26px;border:0;border-radius:9px;background:#2563eb;color:#fff;font-size:10px;font-weight:900;padding:0 8px;white-space:nowrap}
+#routeBtn.active{background:#e0e7ff;color:#1d4ed8}
+#routeInfo{display:none;margin-top:5px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:11px;font-weight:800;line-height:1.35;padding:6px 7px}
+#routeInfo.show{display:block}
+#routeInfo .routeHint{font-size:9px;color:#64748b;margin-top:3px}
+.routeNo{display:inline-block;min-width:16px;height:16px;line-height:16px;border-radius:999px;background:#2563eb;color:#fff;font-style:normal;font-size:10px;text-align:center;margin-right:4px}
+.routeFlow{animation:routeFlow 1s linear infinite}
+@keyframes routeFlow{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion:reduce){.routeFlow{animation:none}}
+@media(max-width:430px){#routeBtn{height:24px;font-size:9px;padding:0 6px}#routeInfo{font-size:10px}}

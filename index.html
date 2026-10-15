@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#f1f5f9" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=d15" />
+    <link rel="stylesheet" href="css/styles.css?v=d20" />
   </head>
   <body>
     <div id="app">
@@ -26617,6 +26617,7 @@
           transform="translate(0 0) scale(1)"
           style="pointer-events: none"
         ></g>
+        <g id="routeLayer" pointer-events="none"></g>
         <g id="markerLayer"></g>
       </svg>
       <div class="controls">
@@ -26644,9 +26645,13 @@
       <button id="resetBtn" aria-label="全体を見る" title="全体を見る"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
       <div id="suggestions"></div>
       <aside id="panel" class="favPanel">
-        <button id="favToggle" type="button">
-          <span>お気に入り</span><span id="favCount">0件 ▾</span>
-        </button>
+        <div class="favHead">
+          <button id="favToggle" type="button">
+            <span>お気に入り</span><span id="favCount">0件 ▾</span>
+          </button>
+          <button id="routeBtn" type="button">ルート検索</button>
+        </div>
+        <div id="routeInfo"></div>
         <div id="favBody">
           <button type="button" class="favTitle favSectionToggle" data-target="favList">
             <span>お気に入りブースリスト</span><span class="favSectionArrow">▴</span>
@@ -26738,7 +26743,7 @@
       </nav>
       <div class="version">ver-2026A-d8</div>
     </div>
-    <script src="js/data.js?v=d15"></script>
-    <script src="js/app.js?v=d15"></script>
+    <script src="js/data.js?v=d20"></script>
+    <script src="js/app.js?v=d20"></script>
   </body>
 </html>

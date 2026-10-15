@@ -4,7 +4,7 @@
 var SPECIAL_BOOTHS=(typeof SPECIAL_BOOTHS_DATA!=='undefined'&&SPECIAL_BOOTHS_DATA)||[];
 booths=booths.concat(SPECIAL_BOOTHS);
 var colors={"bg":"#f8fafc","wall":"#9da3a6","hall":"#ffffff","facility":"#f4f0e8","booth":"#efc247","trpg":"#d17142","purple":"#9a7aaa","green":"#b8c889","blue":"#c8d8ef","red":"#d80b21","border":"#111827","title":"#8e9499","pink":"#d0008b","cyan":"#079bd3","detail":"#374151"};
-var svg=document.getElementById('mapSvg'), viewport=document.getElementById('viewport'), pOverlayLayer=document.getElementById('pOverlayLayer'), markerLayer=document.getElementById('markerLayer'), toiletLayer=document.getElementById('toiletLayer'), filterLayer=document.getElementById('filterLayer');
+var svg=document.getElementById('mapSvg'), viewport=document.getElementById('viewport'), pOverlayLayer=document.getElementById('pOverlayLayer'), markerLayer=document.getElementById('markerLayer'), toiletLayer=document.getElementById('toiletLayer'), filterLayer=document.getElementById('filterLayer'), routeLayer=document.getElementById('routeLayer'), routeBtn=document.getElementById('routeBtn'), routeInfo=document.getElementById('routeInfo');
 var searchInput=document.getElementById('searchInput'), searchBtn=document.getElementById('searchBtn'), clearSearchBtn=document.getElementById('clearSearchBtn'), searchModeSelect=document.getElementById('searchModeSelect'), suggestions=document.getElementById('suggestions'), resetBtn=document.getElementById('resetBtn');
 var userInput=document.getElementById('userInput'), panel=document.getElementById('panel'), infoPanel=document.getElementById('infoPanel'), favToggle=document.getElementById('favToggle'), favBody=document.getElementById('favBody'), favCount=document.getElementById('favCount'), panelTitle=document.getElementById('panelTitle'), panelSub=document.getElementById('panelSub'), panelInfo=document.getElementById('panelInfo'), panelLinks=document.getElementById('panelLinks'), infoTabs=document.getElementById('infoTabs'), memoTab=document.getElementById('memoTab'), overviewTab=document.getElementById('overviewTab'), gamesTab=document.getElementById('gamesTab'), overviewPanel=document.getElementById('overviewPanel'), gamesPanel=document.getElementById('gamesPanel'), watchTab=document.getElementById('watchTab'), watchPanel=document.getElementById('watchPanel'), memoInput=document.getElementById('memoInput'), memoSaved=document.getElementById('memoSaved'), daySwitch=document.getElementById('daySwitch'), starBtn=document.getElementById('starBtn'), visitedBtn=document.getElementById('visitedBtn'), againBtn=document.getElementById('againBtn'), favList=document.getElementById('favList'), favGameList=document.getElementById('favGameList'), againList=document.getElementById('againList'), closeBtn=document.getElementById('closeBtn');
 var selected=null, favorites=[], visited=[], again=[], memos={}, gameWatch={}, userName='guest', selectedDay='土', activeInfoTab='memo', searchMode='booth'; var view={zoom:.78,x:0,y:170}, drag=null, dragging=false, lastTouchDist=0, pinchStartZoom=0, pinchStartMap=null;
@@ -58,7 +58,7 @@ function isVisited(id){return visited.indexOf(id)>=0;}
 function isAgain(id){return again.indexOf(id)>=0;}
 function toggleIn(list,id){var i=list.indexOf(id); if(i>=0)list.splice(i,1); else list.push(id);}
 function resetView(){var w=window.innerWidth||document.documentElement.clientWidth||390;var h=window.innerHeight||document.documentElement.clientHeight||844;var z=isMobile()?0.58:0.78;view.zoom=z;view.x=(w-MAP_W*z)/2;view.y=isMobile()?210:150;applyView();}
-function applyView(){var tf='translate('+view.x+' '+view.y+') scale('+view.zoom+')'; viewport.setAttribute('transform',tf); if(pOverlayLayer)pOverlayLayer.setAttribute('transform',tf); if(toiletLayer)toiletLayer.setAttribute('transform',tf); if(filterLayer)filterLayer.setAttribute('transform',tf); markerLayer.setAttribute('transform',tf); if(view.zoom>=1.6) svg.classList.add('zoomed'); else svg.classList.remove('zoomed'); drawMarkers();}
+function applyView(){var tf='translate('+view.x+' '+view.y+') scale('+view.zoom+')'; viewport.setAttribute('transform',tf); if(pOverlayLayer)pOverlayLayer.setAttribute('transform',tf); if(toiletLayer)toiletLayer.setAttribute('transform',tf); if(filterLayer)filterLayer.setAttribute('transform',tf); markerLayer.setAttribute('transform',tf); if(routeLayer)routeLayer.setAttribute('transform',tf); if(view.zoom>=1.6) svg.classList.add('zoomed'); else svg.classList.remove('zoomed'); drawMarkers();}
 function sx(px){return px/view.zoom;}
 function escAttr(v){return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function markerGroup(b,body){return '<g transform="translate('+b.pinX+' '+b.pinY+') scale('+(1/view.zoom)+')" data-marker-for="'+escAttr(b.id)+'">'+body+'</g>';}
@@ -67,7 +67,9 @@ function drawMarkers(){
   for(var i=0;i<booths.length;i++){
     var b=booths[i];
     var marks=[];
-    if(isFav(b.id))marks.push('star');
+    var ri=routeIndexOf(b.id);
+    if(ri>=0)marks.push('route');
+    else if(isFav(b.id))marks.push('star');
     if(isVisited(b.id))marks.push('visited');
     if(isAgain(b.id))marks.push('again');
     if(marks.length){
@@ -81,6 +83,8 @@ function drawMarkers(){
         var x=startX+mi*gap;
         if(marks[mi]==='star'){
           body+='<text x="'+x+'" y="'+y+'" font-size="12" font-weight="900" fill="#dc2626" stroke="#fff" stroke-width="1.8" paint-order="stroke" text-anchor="middle" dominant-baseline="middle">★</text>';
+        }else if(marks[mi]==='route'){
+          body+='<circle cx="'+x+'" cy="'+y+'" r="7" fill="#2563eb" stroke="#fff" stroke-width="1.8"></circle><text x="'+x+'" y="'+(y+.5)+'" font-size="9" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="middle">'+(ri+1)+'</text>';
         }else if(marks[mi]==='visited'){
           body+='<circle cx="'+x+'" cy="'+y+'" r="4.4" fill="rgba(255,255,255,.88)" stroke="#16a34a" stroke-width="1.9"></circle>';
         }else if(marks[mi]==='again'){
@@ -95,7 +99,13 @@ function drawMarkers(){
     /* Selected pin: the sharp tip is exactly at the booth center. */
     s+=markerGroup(b,'<path d="M0 0C-7.35 -9.45,-7.56 -18.9,0 -18.9C7.56 -18.9,7.35 -9.45,0 0Z" fill="#2563eb" stroke="#fff" stroke-width="1.8"></path><circle cx="0" cy="-13.0" r="2.55" fill="#fff"></circle>');
   }
+  if(routeOn&&routeData&&routeData.legs.length){
+    s=routeArrowsSvg()+s;
+    var sp=routeStartPoint();
+    s+='<g transform="translate('+sp.x+' '+sp.y+') scale('+(1/view.zoom)+')"><circle r="8" fill="#16a34a" stroke="#fff" stroke-width="2"></circle><text y=".5" font-size="8" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="middle">出発</text></g>';
+  }
   markerLayer.innerHTML=s;
+  drawRoute();
 }
 function clientToMap(x,y){return {x:(x-view.x)/view.zoom,y:(y-view.y)/view.zoom};}
 function pick(x,y){
@@ -452,6 +462,8 @@ function updatePanel(){
   } else {
     starBtn.className=''; visitedBtn.className=''; againBtn.className='';
   }
+  if(routeOn)computeRoute();
+  updateRouteUi();
   if(favCount)favCount.textContent=favorites.length+'件 '+((panel&&panel.className.indexOf('open')>=0)?'▴':'▾');
   favList.innerHTML='';
   if(!favorites.length){
@@ -460,7 +472,8 @@ function updatePanel(){
     for(var i=0;i<favorites.length;i++){
       var b=findById(favorites[i]); if(!b)continue;
       var item=document.createElement('div'); item.className='favItem'; item.setAttribute('data-id',b.id);
-      item.innerHTML='<span>'+escapeHtml(favoriteLabel(b))+'</span><span class="favActions"><span class="visitDot '+(isVisited(b.id)?'done':'')+'" title="'+(isVisited(b.id)?'行った':'未訪問')+'" aria-label="'+(isVisited(b.id)?'行った':'未訪問')+'"></span><button>削除</button></span>';
+      var fri=routeIndexOf(b.id);
+      item.innerHTML='<span>'+(fri>=0?'<i class="routeNo">'+(fri+1)+'</i>':'')+escapeHtml(favoriteLabel(b))+'</span><span class="favActions"><span class="visitDot '+(isVisited(b.id)?'done':'')+'" title="'+(isVisited(b.id)?'行った':'未訪問')+'" aria-label="'+(isVisited(b.id)?'行った':'未訪問')+'"></span><button>削除</button></span>';
       favList.appendChild(item);
     }
   }
@@ -514,6 +527,263 @@ function favRange(v,unit){
   if(a&&!z)return m.length>1?a+unit+'〜':a+unit;
   if(a===z)return a+unit;
   return a+'〜'+z+unit;
+}
+// ===== ルート検索: お気に入りブース（行った済みを除く）を回る最短ルート =====
+// 会場をマス目に区切り、ブース・施設・トイレなどを通れないマスにして通路だけを歩く。
+// 通路の中央を歩くよう壁際のマスは少し割高にし、各ブース間の距離から回る順番を最適化する。
+var ROUTE_CELL=5, ROUTE_ENTRANCE={x:736.8,y:215,label:'キッチンカー出入口'};
+var routeOn=false, routeData=null, routeKey='', routeStart=null, routeGrid=null;
+function buildRouteGrid(){
+  var x0=183.42, y0=148.17, W=Math.ceil(1578.44/ROUTE_CELL), H=Math.ceil(834.83/ROUTE_CELL), N=W*H, block=new Uint8Array(N), pad=1.5;
+  function mark(x,y,w,h){
+    var c0=Math.max(0,Math.floor((x-pad-x0)/ROUTE_CELL)), c1=Math.min(W-1,Math.floor((x+w+pad-x0)/ROUTE_CELL));
+    var r0=Math.max(0,Math.floor((y-pad-y0)/ROUTE_CELL)), r1=Math.min(H-1,Math.floor((y+h+pad-y0)/ROUTE_CELL));
+    for(var r=r0;r<=r1;r++)for(var c=c0;c<=c1;c++){
+      var cx=x0+(c+.5)*ROUTE_CELL, cy=y0+(r+.5)*ROUTE_CELL;
+      if(cx>=x-pad&&cx<=x+w+pad&&cy>=y-pad&&cy<=y+h+pad)block[r*W+c]=1;
+    }
+  }
+  for(var i=0;i<booths.length;i++){var b=booths[i]; if(b.w&&b.h)mark(b.x,b.y,b.w,b.h);}
+  // 地図に描かれた色付きの区画（ブース列・トイレ・バックヤードなど）も通れない
+  var skip={'#ffffff':1,'#f8fafc':1,'none':1,'':1};
+  var rects=svg.querySelectorAll('#viewport rect, #toiletLayer rect');
+  for(var j=0;j<rects.length;j++){
+    var e=rects[j], f=(e.getAttribute('fill')||'').toLowerCase();
+    if(skip[f]||e.getAttribute('class')==='rowBadgeRect')continue;
+    var w=parseFloat(e.getAttribute('width'))||0, h=parseFloat(e.getAttribute('height'))||0, rx=parseFloat(e.getAttribute('x'))||0, ry=parseFloat(e.getAttribute('y'))||0;
+    if(w<3&&h<3)continue;
+    if(isRowBackground(rx,ry,w,h))continue;
+    mark(rx,ry,w,h);
+  }
+  // 壁からの距離（マス数, 最大4）。通路の中央ほど大きい
+  var clr=new Uint8Array(N), q=[], k;
+  for(k=0;k<N;k++){if(block[k]){clr[k]=0;q.push(k);}else clr[k]=255;}
+  for(var qi=0;qi<q.length;qi++){
+    var u=q[qi], uc=u%W, ur=(u-uc)/W;
+    if(clr[u]>=4)continue;
+    for(var dr=-1;dr<=1;dr++)for(var dc=-1;dc<=1;dc++){
+      var nr=ur+dr, nc=uc+dc; if(nr<0||nc<0||nr>=H||nc>=W)continue;
+      var v=nr*W+nc; if(clr[v]>clr[u]+1){clr[v]=clr[u]+1;q.push(v);}
+    }
+  }
+  return {x0:x0,y0:y0,W:W,H:H,block:block,clr:clr};
+}
+// ブース列の色付き背景（列全体に塗られた長方形）。ブースが無い部分は通れるので壁にせず、ブース1つ1つだけを壁にする
+function isRowBackground(x,y,w,h){
+  for(var i=0;i<booths.length;i++){var b=booths[i];if(b.type!=='row')continue;var cx=b.x+b.w/2,cy=b.y+b.h/2;if(cx>x&&cx<x+w&&cy>y&&cy<y+h)return true;}
+  return false;
+}
+function routeCellOf(g,x,y){return Math.min(g.H-1,Math.max(0,Math.floor((y-g.y0)/ROUTE_CELL)))*g.W+Math.min(g.W-1,Math.max(0,Math.floor((x-g.x0)/ROUTE_CELL)));}
+function routeCellXY(g,i){return {x:g.x0+(i%g.W+.5)*ROUTE_CELL,y:g.y0+(Math.floor(i/g.W)+.5)*ROUTE_CELL};}
+// (tx,ty) に一番近い通れるマス。ブース矩形の周りを1マスずつ広げて探す
+function routeNearestFree(g,x,y,w,h,tx,ty){
+  var c0=Math.floor((x-g.x0)/ROUTE_CELL), c1=Math.floor((x+w-g.x0)/ROUTE_CELL), r0=Math.floor((y-g.y0)/ROUTE_CELL), r1=Math.floor((y+h-g.y0)/ROUTE_CELL);
+  for(var k=0;k<40;k++){
+    var best=-1, bd=Infinity;
+    for(var r=r0-k;r<=r1+k;r++)for(var c=c0-k;c<=c1+k;c++){
+      if(r!==r0-k&&r!==r1+k&&c!==c0-k&&c!==c1+k)continue;
+      if(r<0||c<0||r>=g.H||c>=g.W||g.block[r*g.W+c])continue;
+      var p=routeCellXY(g,r*g.W+c), d=(p.x-tx)*(p.x-tx)+(p.y-ty)*(p.y-ty);
+      if(d<bd){bd=d;best=r*g.W+c;}
+    }
+    if(best>=0)return best;
+  }
+  return -1;
+}
+// ブースの入口候補。普通のブースは正面の1か所、エリアや施設など大きい区画は四辺それぞれから入れる
+function routeAccessCells(g,b){
+  var cx=b.x+b.w/2, cy=b.y+b.h/2, out=[routeNearestFree(g,b.x,b.y,b.w,b.h,cx,cy)];
+  if(b.w>30||b.h>30){
+    var sides=[[cx,b.y-ROUTE_CELL],[cx,b.y+b.h+ROUTE_CELL],[b.x-ROUTE_CELL,cy],[b.x+b.w+ROUTE_CELL,cy]];
+    for(var i=0;i<sides.length;i++){
+      var c=routeNearestFree(g,b.x,b.y,b.w,b.h,sides[i][0],sides[i][1]), p;
+      if(c<0||out.indexOf(c)>=0)continue;
+      p=routeCellXY(g,c);
+      if(Math.abs(p.x-sides[i][0])+Math.abs(p.y-sides[i][1])<ROUTE_CELL*4)out.push(c);
+    }
+  }
+  return out.filter(function(c){return c>=0;});
+}
+// 1点から全マスへの通路距離（上下左右のみ・ダイクストラ）。壁際1〜2マスは少し割高にして通路中央を通す
+function routeDijkstra(g,src){
+  var N=g.W*g.H, dist=new Float32Array(N), prev=new Int32Array(N), heap=[], PEN=[0,.45,.12,0,0];
+  for(var i=0;i<N;i++){dist[i]=Infinity;prev[i]=-1;}
+  function push(n,d){heap.push([d,n]);var k=heap.length-1;while(k>0){var p=(k-1)>>1;if(heap[p][0]<=heap[k][0])break;var t=heap[p];heap[p]=heap[k];heap[k]=t;k=p;}}
+  function pop(){var top=heap[0],last=heap.pop();if(heap.length){heap[0]=last;var k=0;for(;;){var l=2*k+1,r=l+1,m=k;if(l<heap.length&&heap[l][0]<heap[m][0])m=l;if(r<heap.length&&heap[r][0]<heap[m][0])m=r;if(m===k)break;var t=heap[m];heap[m]=heap[k];heap[k]=t;k=m;}}return top;}
+  var DIRS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1]];
+  dist[src]=0; push(src,0);
+  while(heap.length){
+    var it=pop(), u=it[1]; if(it[0]>dist[u])continue;
+    var uc=u%g.W, ur=(u-uc)/g.W;
+    for(var q=0;q<4;q++){
+      var nc=uc+DIRS[q][0], nr=ur+DIRS[q][1];
+      if(nc<0||nr<0||nc>=g.W||nr>=g.H)continue;
+      var v=nr*g.W+nc; if(g.block[v])continue;
+      var nd=dist[u]+DIRS[q][2]*(1+PEN[Math.min(4,g.clr[v])]); if(nd<dist[v]){dist[v]=nd;prev[v]=u;push(v,dist[v]);} // Float32 に丸めた値で積む（比較のずれで展開漏れしないように）
+    }
+  }
+  return {dist:dist,prev:prev};
+}
+// 回る順番と各ブースの入口を決める。C[a][b] は入口候補a→bの距離、own[a] は候補aのブース番号（0=出発点）。
+// 候補の総数が少なければ全探索(DP)で厳密に最短、多いときは 2-opt＋Or-opt で順番を磨いてから入口を最適化。
+function routeSolve(C,own,n){
+  var K=own.length, i, j, k, s;
+  var byStop=[]; for(i=0;i<=n;i++)byStop.push([]); for(k=0;k<K;k++)byStop[own[k]].push(k);
+  if(n<=0)return [];
+  if(n<=13&&(1<<n)*(K-1)*(K-1)<=4e7){
+    var S=1<<n, dp=new Float64Array(S*K), par=new Int32Array(S*K);
+    for(i=0;i<S*K;i++){dp[i]=Infinity;par[i]=-1;}
+    for(k=1;k<K;k++)dp[(1<<(own[k]-1))*K+k]=C[0][k];
+    for(s=1;s<S;s++)for(k=1;k<K;k++){
+      var cur=dp[s*K+k]; if(cur===Infinity)continue;
+      for(j=1;j<K;j++){var bit=1<<(own[j]-1);if(s&bit)continue;var ns=s|bit,v=cur+C[k][j];if(v<dp[ns*K+j]){dp[ns*K+j]=v;par[ns*K+j]=k;}}
+    }
+    var full=S-1, last=-1; for(k=1;k<K;k++)if(dp[full*K+k]<Infinity&&(last<0||dp[full*K+k]<dp[full*K+last]))last=k;
+    if(last>0){
+      var seq=[], st=full; while(last>0){seq.unshift(last);var pk=par[st*K+last];st&=~(1<<(own[last]-1));last=pk;}
+      return seq;
+    }
+  }
+  // ブース間の最短（入口の組み合わせの最小）で順番を決める
+  var M=[]; for(i=0;i<=n;i++){M.push([]);for(j=0;j<=n;j++){var m=Infinity;byStop[i].forEach(function(a){byStop[j].forEach(function(b){if(C[a][b]<m)m=C[a][b];});});M[i].push(m);}}
+  function len(p){var t=0;for(var x=0;x<p.length-1;x++)t+=M[p[x]][p[x+1]];return t;}
+  var left=[], p=[0], at=0; for(i=1;i<=n;i++)left.push(i);
+  while(left.length){var bi=0;for(i=1;i<left.length;i++)if(M[at][left[i]]<M[at][left[bi]])bi=i;at=left.splice(bi,1)[0];p.push(at);}
+  var best=len(p), improved=true;
+  while(improved){
+    improved=false;
+    for(i=0;i<p.length-2;i++)for(k=i+2;k<p.length;k++){ // 2-opt
+      var q=p.slice(0,i+1).concat(p.slice(i+1,k+1).reverse(),p.slice(k+1)), L=len(q);
+      if(L<best-1e-6){p=q;best=L;improved=true;}
+    }
+    for(var segLen=1;segLen<=3;segLen++)for(i=1;i+segLen<=p.length;i++){ // Or-opt: 1〜3か所をまとめて別の位置へ
+      var seg=p.slice(i,i+segLen), rest=p.slice(0,i).concat(p.slice(i+segLen));
+      for(j=1;j<=rest.length;j++){
+        if(j===i)continue;
+        var q2=rest.slice(0,j).concat(seg,rest.slice(j)), L2=len(q2);
+        if(L2<best-1e-6){p=q2;best=L2;improved=true;break;}
+        q2=rest.slice(0,j).concat(seg.slice().reverse(),rest.slice(j)); L2=len(q2);
+        if(L2<best-1e-6){p=q2;best=L2;improved=true;break;}
+      }
+    }
+  }
+  // 決まった順番に対して入口の選び方を厳密に最適化（ビタビ）
+  var layers=p.map(function(st){return byStop[st];}), cost=[[0]], back=[[-1]];
+  for(i=1;i<layers.length;i++){
+    cost.push([]);back.push([]);
+    for(j=0;j<layers[i].length;j++){
+      var bc=Infinity, bb=-1;
+      for(k=0;k<layers[i-1].length;k++){var v2=cost[i-1][k]+C[layers[i-1][k]][layers[i][j]];if(v2<bc){bc=v2;bb=k;}}
+      cost[i].push(bc);back[i].push(bb);
+    }
+  }
+  var li=layers.length-1, bj=0; for(j=1;j<cost[li].length;j++)if(cost[li][j]<cost[li][bj])bj=j;
+  var out=[]; for(i=li;i>0;i--){out.unshift(layers[i][bj]);bj=back[i][bj];}
+  return out;
+}
+// 2点間の道順（描画用）。上下左右だけで進み、曲がるたびに割増しして曲がり角の少ない道を選ぶ。
+// 状態=(マス, 進行方向) の A*。距離は表と同じ重み＋曲がり1回あたり ROUTE_TURN マス分。
+var ROUTE_TURN=4;
+function routeLegPath(g,src,dst){
+  var N=g.W*g.H, dist=new Float32Array(N*4), prev=new Int32Array(N*4), heap=[], PEN=[0,.45,.12,0,0], DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+  var tc=dst%g.W, tr=(dst-tc)/g.W, i;
+  for(i=0;i<N*4;i++){dist[i]=Infinity;prev[i]=-1;}
+  function h(n){var c=n%g.W, r=(n-c)/g.W;return Math.abs(c-tc)+Math.abs(r-tr);}
+  function push(st,d){heap.push([d+h((st/4)|0),d,st]);var k=heap.length-1;while(k>0){var p=(k-1)>>1;if(heap[p][0]<=heap[k][0])break;var t=heap[p];heap[p]=heap[k];heap[k]=t;k=p;}}
+  function pop(){var top=heap[0],last=heap.pop();if(heap.length){heap[0]=last;var k=0;for(;;){var l=2*k+1,r=l+1,m=k;if(l<heap.length&&heap[l][0]<heap[m][0])m=l;if(r<heap.length&&heap[r][0]<heap[m][0])m=r;if(m===k)break;var t=heap[m];heap[m]=heap[k];heap[k]=t;k=m;}}return top;}
+  for(i=0;i<4;i++){dist[src*4+i]=0;push(src*4+i,0);}
+  var end=-1;
+  while(heap.length){
+    var it=pop(), st=it[2]; if(it[1]>dist[st])continue;
+    var u=(st/4)|0, du=st%4; if(u===dst){end=st;break;}
+    var uc=u%g.W, ur=(u-uc)/g.W;
+    for(var q=0;q<4;q++){
+      var nc=uc+DIRS[q][0], nr=ur+DIRS[q][1];
+      if(nc<0||nr<0||nc>=g.W||nr>=g.H)continue;
+      var v=nr*g.W+nc; if(g.block[v])continue;
+      var ns=v*4+q, nd=dist[st]+(1+PEN[Math.min(4,g.clr[v])])+(q!==du&&u!==src?ROUTE_TURN:0);
+      if(nd<dist[ns]){dist[ns]=nd;prev[ns]=st;push(ns,dist[ns]);}
+    }
+  }
+  if(end<0)return [src,dst];
+  var cells=[]; for(var x=end;x>=0;x=prev[x])cells.push((x/4)|0);
+  cells.reverse();
+  // 同じ向きに続くマスはまとめて、曲がり角だけ残す
+  var out=[cells[0]];
+  for(i=1;i<cells.length-1;i++){var a0=cells[i]-cells[i-1], a1=cells[i+1]-cells[i];if(a0!==a1)out.push(cells[i]);}
+  if(cells.length>1)out.push(cells[cells.length-1]);
+  return out;
+}
+function routeStops(){
+  var out=[];
+  for(var i=0;i<favorites.length;i++){var b=findById(favorites[i]);if(b&&!isVisited(b.id)&&(!routeStart||routeStart.id!==b.id))out.push(b);}
+  return out;
+}
+function computeRoute(){
+  var stops=routeStops(), key=(routeStart?routeStart.id:'entrance')+'|'+stops.map(function(b){return b.id;}).join(',');
+  if(key===routeKey)return;
+  routeKey=key; routeData=null;
+  if(!stops.length)return;
+  if(!routeGrid)routeGrid=buildRouteGrid();
+  var g=routeGrid, i, j;
+  var start=routeStart?routeNearestFree(g,routeStart.x,routeStart.y,routeStart.w,routeStart.h,routeStart.pinX,routeStart.pinY):routeNearestFree(g,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y,1,1,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y);
+  if(start<0)return;
+  var tree0=routeDijkstra(g,start), cells=[start], own=[0], trees=[tree0], ok=[], skipped=[];
+  for(i=0;i<stops.length;i++){
+    var cand=routeAccessCells(g,stops[i]).filter(function(c){return tree0.dist[c]<Infinity;});
+    if(!cand.length){skipped.push(stops[i]);continue;}
+    ok.push(stops[i]);
+    for(j=0;j<cand.length;j++){cells.push(cand[j]);own.push(ok.length);trees.push(routeDijkstra(g,cand[j]));}
+  }
+  if(!ok.length){routeData={stops:[],legs:[],skipped:skipped};return;}
+  var C=[]; for(i=0;i<cells.length;i++){C.push([]);for(j=0;j<cells.length;j++)C[i].push(trees[i].dist[cells[j]]);}
+  var seq=[0].concat(routeSolve(C,own,ok.length)), legs=[];
+  for(i=0;i<seq.length-1;i++){
+    legs.push(routeLegPath(g,cells[seq[i]],cells[seq[i+1]]).map(function(c){return routeCellXY(g,c);}));
+  }
+  routeData={stops:seq.slice(1).map(function(k){return ok[own[k]-1];}),legs:legs,skipped:skipped};
+}
+function routeIndexOf(id){if(!routeOn||!routeData)return -1;for(var i=0;i<routeData.stops.length;i++)if(routeData.stops[i].id===id)return i;return -1;}
+function routePathD(){
+  var d='';
+  for(var i=0;i<routeData.legs.length;i++){var L=routeData.legs[i];for(var j=0;j<L.length;j++)d+=((i||j)?'L':'M')+L[j].x.toFixed(1)+' '+L[j].y.toFixed(1);}
+  return d;
+}
+function drawRoute(){
+  if(!routeLayer)return;
+  if(!routeOn||!routeData||!routeData.legs.length){routeLayer.innerHTML='';return;}
+  var d=routePathD();
+  routeLayer.innerHTML='<path d="'+d+'" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".95"/>'+
+    '<path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'+
+    '<path class="routeFlow" d="'+d+'" fill="none" stroke="#bfdbfe" stroke-width="2" stroke-dasharray="2 10" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+}
+// 進行方向の矢印（画面上で一定の大きさ）。線に沿って一定間隔に置く
+function routeArrowsSvg(){
+  var pts=[]; routeData.legs.forEach(function(L,i){(i?L.slice(1):L).forEach(function(p){pts.push(p);});});
+  var gap=110/Math.max(.5,Math.min(2,view.zoom)), acc=gap*.5, s='';
+  for(var i=1;i<pts.length;i++){
+    var a=pts[i-1], b=pts[i], dx=b.x-a.x, dy=b.y-a.y, L=Math.sqrt(dx*dx+dy*dy), t=acc;
+    while(t<L){
+      var x=a.x+dx*t/L, y=a.y+dy*t/L, ang=Math.atan2(dy,dx)*180/Math.PI;
+      s+='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+ang.toFixed(0)+') scale('+(1/view.zoom)+')"><path d="M-3.5 -4.5L2.5 0L-3.5 4.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g>';
+      t+=gap;
+    }
+    acc=t-L;
+  }
+  return s;
+}
+function routeStartPoint(){var p=routeData&&routeData.legs.length?routeData.legs[0][0]:null;return p||(routeStart?{x:routeStart.pinX,y:routeStart.pinY}:ROUTE_ENTRANCE);}
+function updateRouteUi(){
+  if(routeBtn){routeBtn.className=routeOn?'active':''; routeBtn.textContent=routeOn?'ルート解除':'ルート検索';}
+  if(!routeInfo)return;
+  if(!routeOn){routeInfo.className='';routeInfo.innerHTML='';return;}
+  var from=routeStart?favoriteLabel(routeStart):ROUTE_ENTRANCE.label, html;
+  if(!routeData||!routeData.stops.length)html='回るブースがありません（お気に入りのうち「行った」以外が対象）'+(routeData&&routeData.skipped.length?'<br>通路から届かず除外: '+escapeHtml(routeData.skipped.map(favoriteLabel).join('、')):'');
+  else{
+    html='<b>'+escapeHtml(from)+'</b> から '+routeData.stops.length+'ブース（番号順）';
+    if(routeData.skipped.length)html+='<br>通路から届かず除外: '+escapeHtml(routeData.skipped.map(favoriteLabel).join('、'));
+  }
+  routeInfo.className='show'; routeInfo.innerHTML=html+'<div class="routeHint">ブースを選んでから押すとそこから出発・「行った」は除外</div>';
 }
 function findById(id){for(var i=0;i<booths.length;i++)if(booths[i].id===id)return booths[i]; return null;}
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -753,6 +1023,7 @@ searchInput.oninput=showSuggestions; searchInput.onkeydown=function(e){if(e.key=
 if(infoTabs){infoTabs.onclick=function(e){var n=e.target;if(n&&n.getAttribute&&n.getAttribute('data-tab'))activateInfoTab(n.getAttribute('data-tab'));};}
 if(gamesPanel){gamesPanel.onclick=function(e){var n=e.target;if(!n||!n.getAttribute||!n.getAttribute('data-game-id'))return;var gid=n.getAttribute('data-game-id');var games=gameDetailsFor(selected).filter(infoMatchesDay);if(!games.length)games=gameDetailsFor(selected);for(var i=0;i<games.length;i++){if(gameInterestId(selected.id,games[i])===gid){setGameWatched(selected.id,selected,games[i],!isGameWatched(selected.id,games[i]));updatePanel();drawMarkers();break;}}};}
 if(watchPanel){watchPanel.onclick=function(e){var n=e.target;if(!n||!n.getAttribute)return;var wid=n.getAttribute('data-watch-id');if(wid&&n.className.indexOf('watchRemoveBtn')>=0){delete gameWatch[wid];saveGameWatch();updatePanel();drawMarkers();return;}var item=n;while(item&&item!==watchPanel&&!item.getAttribute('data-booth-id'))item=item.parentNode;if(item&&item.getAttribute('data-booth-id')){var b=findById(item.getAttribute('data-booth-id'));if(b)selectBooth(b,true);}};}
+if(routeBtn){routeBtn.onclick=function(){routeOn=!routeOn; routeKey=''; routeData=null; routeStart=routeOn?selected:null; updatePanel(); drawMarkers();};}
 if(favGameList){favGameList.onclick=function(e){var n=e.target;if(!n||!n.getAttribute)return;var wid=n.getAttribute('data-watch-id');if(wid){delete gameWatch[wid];saveGameWatch();updatePanel();drawMarkers();return;}var item=n;while(item&&item!==favGameList&&!item.getAttribute('data-booth-id'))item=item.parentNode;if(item&&item!==favGameList){var b=findById(item.getAttribute('data-booth-id'));if(b)selectBooth(b,true);}};}
 if(memoInput){memoInput.oninput=function(){if(!selected)return;setMemoFor(selected.id,memoInput.value);if(memoSaved){memoSaved.textContent='保存しました';clearTimeout(memoSaved._t);memoSaved._t=setTimeout(function(){if(memoSaved)memoSaved.textContent='入力すると自動保存されます';},1200);}};}
 suggestions.onclick=function(e){var n=e.target; while(n&&n!==suggestions&&!n.getAttribute('data-id'))n=n.parentNode; if(n&&n.getAttribute('data-id')){var b=findById(n.getAttribute('data-id')); if(!b)return; var gameKey=n.getAttribute('data-game-key'); if(gameKey){var games=gameDetailsFor(b); for(var gi=0;gi<games.length;gi++){if(gameInterestId(b.id,games[gi])===gameKey){selectGameResult(b,games[gi]);return;}}} searchInput.value=boothSuggestionText(b);suggestions.className='';selectBooth(b,true);}};
