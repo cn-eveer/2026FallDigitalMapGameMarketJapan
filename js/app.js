@@ -531,8 +531,12 @@ function favRange(v,unit){
 // ===== ルート検索: お気に入りブース（行った済みを除く）を回る最短ルート =====
 // 会場をマス目に区切り、ブース・施設・トイレなどを通れないマスにして通路だけを歩く。
 // 通路の中央を歩くよう壁際のマスは少し割高にし、各ブース間の距離から回る順番を最適化する。
-var ROUTE_CELL=5, ROUTE_ENTRANCE={x:736.8,y:215,label:'キッチンカー出入口'};
-var routeOn=false, routeData=null, routeKey='', routeStart=null, routeGrid=null;
+var ROUTE_CELL=5;
+var ROUTE_ENTRANCE={x:736.8,y:215,label:'キッチンカー出入口'}; // 出発地点（会場内側の通路上）
+var routeOn=false, routeData=null, routeKey='', routeGrid=null, routeStartId='';
+// ブースを開いて「そのブースから出発」を選ぶと、パネルを閉じてもそのブースを出発点にし続ける
+function routeStartBooth(){return routeStartId?findById(routeStartId):null;}
+function routeOpenBooth(){return (selected&&infoPanel&&infoPanel.className.indexOf('show')>=0)?selected:null;}
 function buildRouteGrid(){
   var x0=183.42, y0=148.17, W=Math.ceil(1578.44/ROUTE_CELL), H=Math.ceil(834.83/ROUTE_CELL), N=W*H, block=new Uint8Array(N), pad=1.5;
   function mark(x,y,w,h){
@@ -716,17 +720,18 @@ function routeLegPath(g,src,dst){
 }
 function routeStops(){
   var out=[];
-  for(var i=0;i<favorites.length;i++){var b=findById(favorites[i]);if(b&&!isVisited(b.id)&&(!routeStart||routeStart.id!==b.id))out.push(b);}
+  var sb=routeStartBooth();
+  for(var i=0;i<favorites.length;i++){var b=findById(favorites[i]);if(b&&!isVisited(b.id)&&b!==sb)out.push(b);}
   return out;
 }
 function computeRoute(){
-  var stops=routeStops(), key=(routeStart?routeStart.id:'entrance')+'|'+stops.map(function(b){return b.id;}).join(',');
+  var stops=routeStops(), sb=routeStartBooth(), key=(sb?sb.id:'kitchen')+'|'+stops.map(function(b){return b.id;}).join(',');
   if(key===routeKey)return;
   routeKey=key; routeData=null;
   if(!stops.length)return;
   if(!routeGrid)routeGrid=buildRouteGrid();
   var g=routeGrid, i, j;
-  var start=routeStart?routeNearestFree(g,routeStart.x,routeStart.y,routeStart.w,routeStart.h,routeStart.pinX,routeStart.pinY):routeNearestFree(g,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y,1,1,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y);
+  var start=sb?routeNearestFree(g,sb.x,sb.y,sb.w,sb.h,sb.pinX,sb.pinY):routeNearestFree(g,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y,1,1,ROUTE_ENTRANCE.x,ROUTE_ENTRANCE.y);
   if(start<0)return;
   var tree0=routeDijkstra(g,start), cells=[start], own=[0], trees=[tree0], ok=[], skipped=[];
   for(i=0;i<stops.length;i++){
@@ -772,18 +777,20 @@ function routeArrowsSvg(){
   }
   return s;
 }
-function routeStartPoint(){var p=routeData&&routeData.legs.length?routeData.legs[0][0]:null;return p||(routeStart?{x:routeStart.pinX,y:routeStart.pinY}:ROUTE_ENTRANCE);}
+function routeStartPoint(){var p=routeData&&routeData.legs.length?routeData.legs[0][0]:null;return p||ROUTE_ENTRANCE;}
 function updateRouteUi(){
-  if(routeBtn){routeBtn.className=routeOn?'active':''; routeBtn.textContent=routeOn?'ルート解除':'ルート検索';}
+  if(routeBtn){routeBtn.className=routeOn?'active':''; routeBtn.textContent=routeOn?'ルート非表示':'ルート表示';}
   if(!routeInfo)return;
   if(!routeOn){routeInfo.className='';routeInfo.innerHTML='';return;}
-  var from=routeStart?favoriteLabel(routeStart):ROUTE_ENTRANCE.label, html;
+  var html='', pickHtml, sb=routeStartBooth(), open=routeOpenBooth()||sb, fromB=!!(sb&&open===sb);
+  if(open)pickHtml='<div class="routeEntry">出発</div><div class="routeStartPick" role="group" aria-label="出発地点"><button type="button" data-start="kitchen" class="'+(fromB?'':'active')+'">'+escapeHtml(ROUTE_ENTRANCE.label)+'</button><button type="button" data-start="booth" class="'+(fromB?'active':'')+'">'+escapeHtml(favoriteLabel(open))+'</button></div>';
+  else pickHtml='<div class="routeEntry">出発: '+escapeHtml(ROUTE_ENTRANCE.label)+'</div>';
   if(!routeData||!routeData.stops.length)html='回るブースがありません（お気に入りのうち「行った」以外が対象）'+(routeData&&routeData.skipped.length?'<br>通路から届かず除外: '+escapeHtml(routeData.skipped.map(favoriteLabel).join('、')):'');
   else{
-    html='<b>'+escapeHtml(from)+'</b> から '+routeData.stops.length+'ブース（番号順）';
+    html=routeData.stops.length+'ブースを番号順に回ります';
     if(routeData.skipped.length)html+='<br>通路から届かず除外: '+escapeHtml(routeData.skipped.map(favoriteLabel).join('、'));
   }
-  routeInfo.className='show'; routeInfo.innerHTML=html+'<div class="routeHint">ブースを選んでから押すとそこから出発・「行った」は除外</div>';
+  routeInfo.className='show'; routeInfo.innerHTML=pickHtml+'<div class="routeSummary">'+html+'</div><div class="routeHint">「行った」ブースは除外</div>';
 }
 function findById(id){for(var i=0;i<booths.length;i++)if(booths[i].id===id)return booths[i]; return null;}
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -1023,7 +1030,8 @@ searchInput.oninput=showSuggestions; searchInput.onkeydown=function(e){if(e.key=
 if(infoTabs){infoTabs.onclick=function(e){var n=e.target;if(n&&n.getAttribute&&n.getAttribute('data-tab'))activateInfoTab(n.getAttribute('data-tab'));};}
 if(gamesPanel){gamesPanel.onclick=function(e){var n=e.target;if(!n||!n.getAttribute||!n.getAttribute('data-game-id'))return;var gid=n.getAttribute('data-game-id');var games=gameDetailsFor(selected).filter(infoMatchesDay);if(!games.length)games=gameDetailsFor(selected);for(var i=0;i<games.length;i++){if(gameInterestId(selected.id,games[i])===gid){setGameWatched(selected.id,selected,games[i],!isGameWatched(selected.id,games[i]));updatePanel();drawMarkers();break;}}};}
 if(watchPanel){watchPanel.onclick=function(e){var n=e.target;if(!n||!n.getAttribute)return;var wid=n.getAttribute('data-watch-id');if(wid&&n.className.indexOf('watchRemoveBtn')>=0){delete gameWatch[wid];saveGameWatch();updatePanel();drawMarkers();return;}var item=n;while(item&&item!==watchPanel&&!item.getAttribute('data-booth-id'))item=item.parentNode;if(item&&item.getAttribute('data-booth-id')){var b=findById(item.getAttribute('data-booth-id'));if(b)selectBooth(b,true);}};}
-if(routeBtn){routeBtn.onclick=function(){routeOn=!routeOn; routeKey=''; routeData=null; routeStart=routeOn?selected:null; updatePanel(); drawMarkers();};}
+if(routeInfo){routeInfo.onclick=function(e){var n=e.target;while(n&&n!==routeInfo&&!(n.getAttribute&&n.getAttribute('data-start')))n=n.parentNode;if(!n||n===routeInfo)return;var ob=routeOpenBooth()||routeStartBooth();routeStartId=(n.getAttribute('data-start')==='booth'&&ob)?ob.id:'';updatePanel();drawMarkers();};}
+if(routeBtn){routeBtn.onclick=function(){routeOn=!routeOn; routeStartId=''; routeKey=''; routeData=null; updatePanel(); drawMarkers();};}
 if(favGameList){favGameList.onclick=function(e){var n=e.target;if(!n||!n.getAttribute)return;var wid=n.getAttribute('data-watch-id');if(wid){delete gameWatch[wid];saveGameWatch();updatePanel();drawMarkers();return;}var item=n;while(item&&item!==favGameList&&!item.getAttribute('data-booth-id'))item=item.parentNode;if(item&&item!==favGameList){var b=findById(item.getAttribute('data-booth-id'));if(b)selectBooth(b,true);}};}
 if(memoInput){memoInput.oninput=function(){if(!selected)return;setMemoFor(selected.id,memoInput.value);if(memoSaved){memoSaved.textContent='保存しました';clearTimeout(memoSaved._t);memoSaved._t=setTimeout(function(){if(memoSaved)memoSaved.textContent='入力すると自動保存されます';},1200);}};}
 suggestions.onclick=function(e){var n=e.target; while(n&&n!==suggestions&&!n.getAttribute('data-id'))n=n.parentNode; if(n&&n.getAttribute('data-id')){var b=findById(n.getAttribute('data-id')); if(!b)return; var gameKey=n.getAttribute('data-game-key'); if(gameKey){var games=gameDetailsFor(b); for(var gi=0;gi<games.length;gi++){if(gameInterestId(b.id,games[gi])===gameKey){selectGameResult(b,games[gi]);return;}}} searchInput.value=boothSuggestionText(b);suggestions.className='';selectBooth(b,true);}};
@@ -1048,7 +1056,7 @@ function fitFavPanel(){
   limit=Math.min(limit-8,top+vh*.55);
   favBody.style.maxHeight=Math.max(120,Math.floor(limit-top))+'px';
 }
-if(infoPanel&&window.MutationObserver)new MutationObserver(fitFavPanel).observe(infoPanel,{attributes:true,attributeFilter:['class']});
+if(infoPanel&&window.MutationObserver)new MutationObserver(function(){if(routeOn){updatePanel();drawMarkers();}else fitFavPanel();}).observe(infoPanel,{attributes:true,attributeFilter:['class']});
 window.addEventListener('resize',fitFavPanel);
 // ブースリスト / ゲームリストの見出しで開閉。開閉状態はこの端末に保存する。
 (function(){

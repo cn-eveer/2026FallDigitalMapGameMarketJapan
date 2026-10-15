@@ -1460,3 +1460,11 @@
 @keyframes routeFlow{to{stroke-dashoffset:-12}}
 @media (prefers-reduced-motion:reduce){.routeFlow{animation:none}}
 @media(max-width:430px){#routeBtn{height:24px;font-size:9px;padding:0 6px}#routeInfo{font-size:10px}}
+/* ルートの出発地点 */
+#routeInfo .routeEntry{font-size:11px;font-weight:900;color:#1e3a8a}
+#routeInfo .routeSummary{margin-top:2px}
+#routeInfo .routeStartPick{display:flex;gap:4px;margin-top:3px}
+#routeInfo .routeStartPick button{flex:1 1 0;min-width:0;height:26px;border:1px solid #93c5fd;border-radius:7px;background:#fff;color:#1e3a8a;font-size:10px;font-weight:900;padding:0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#routeInfo .routeStartPick button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+/* PC: ブース情報パネルをお気に入りパネルの右に置き、重ならないようにする */
+@media (min-width:701px){#infoPanel{left:282px!important;width:min(390px,calc(100vw - 292px))!important}}
